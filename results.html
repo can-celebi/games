@@ -189,33 +189,44 @@ function renderGame(key) {
   if (['steady_hand', 'catcher', 'pendulum'].includes(key)) {
     const outcomes = results.map(r => r.outcome).filter(Boolean);
     const passCount = outcomes.filter(o => o === 'pass' || o === 'success').length;
-    statsHTML += `<div class="stat-card"><div class="value">${passCount}/${outcomes.length}</div><div class="label">Pass Rate</div></div>`;
+    const failCount = outcomes.filter(o => o === 'fail' || o === 'failure').length;
+    statsHTML += `<div class="stat-card"><div class="value result-pass">${passCount}</div><div class="label">Passed</div></div>`;
+    statsHTML += `<div class="stat-card"><div class="value result-fail">${failCount}</div><div class="label">Failed</div></div>`;
 
     if (key === 'catcher') {
       const scores = results.map(r => r.score).filter(s => s != null);
       if (scores.length) {
         const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Score</div></div>`;
+        const min = Math.min(...scores);
+        const max = Math.max(...scores);
+        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Caught</div></div>`;
+        statsHTML += `<div class="stat-card"><div class="value">${min}–${max}</div><div class="label">Range</div></div>`;
       }
     }
     if (key === 'steady_hand') {
-      const scores = results.map(r => r.score).filter(s => s != null);
-      if (scores.length) {
-        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Lives Left</div></div>`;
+      const tries = results.map(r => r.tries).filter(s => s != null);
+      if (tries.length) {
+        const avg = tries.reduce((a, b) => a + b, 0) / tries.length;
+        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Tries</div></div>`;
+      }
+    }
+    if (key === 'pendulum') {
+      const attempts = results.map(r => r.attempts).filter(s => s != null);
+      if (attempts.length) {
+        const avg = attempts.reduce((a, b) => a + b, 0) / attempts.length;
+        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Attempts</div></div>`;
       }
     }
   }
 
   if (['darkness', 'ink', 'fire', 'plant'].includes(key)) {
-    // Choice distribution
     const choices = results.map(r => r.choice).filter(Boolean);
     const choiceCounts = {};
     choices.forEach(c => { choiceCounts[c] = (choiceCounts[c] || 0) + 1; });
-    const topChoice = Object.entries(choiceCounts).sort((a, b) => b[1] - a[1])[0];
-    if (topChoice) {
-      statsHTML += `<div class="stat-card"><div class="value">${topChoice[0]}</div><div class="label">Most Chosen (${topChoice[1]}x)</div></div>`;
-    }
+    const sorted = Object.entries(choiceCounts).sort((a, b) => b[1] - a[1]);
+    sorted.forEach(([choice, count]) => {
+      statsHTML += `<div class="stat-card"><div class="value">${count}</div><div class="label">Chose "${choice}"</div></div>`;
+    });
   }
 
   statsHTML += '</div>';
@@ -232,14 +243,23 @@ function renderGame(key) {
   let sessionsHTML = '<div class="sessions-section"><h3>Sessions</h3>';
   sessions.sort((a, b) => b.duration_ms - a.duration_ms);
   sessions.forEach(r => {
-    const outcome = r.result ? (r.result.outcome || r.result.choice || r.result.trigger || '') : '';
+    const res = r.result || {};
+    const outcome = res.outcome || res.choice || res.trigger || '';
     const cls = outcome ? 'result-' + outcome.toLowerCase() : '';
     const mouseCount = r.mouse ? r.mouse.length : 0;
+    // Build detail string
+    let detail = outcome || '—';
+    if (key === 'catcher' && res.score != null) detail = `${outcome} (caught ${res.score})`;
+    if (key === 'steady_hand') detail = `${outcome} (${res.tries || '?'} tries)`;
+    if (key === 'pendulum') detail = `${outcome} (${res.attempts || '?'} attempts)`;
+    if (res.text) detail += ` — ${res.text}`;
+    if (res.revealPct != null) detail += ` (${Math.round(res.revealPct)}% revealed)`;
+    if (res.growthPct != null) detail += ` (${Math.round(res.growthPct)}% grown)`;
     sessionsHTML += `
       <div class="session-row">
         <span class="id">${r.id.slice(0, 8)}</span>
         <span class="meta">${(r.duration_ms / 1000).toFixed(1)}s · ${mouseCount} pts · ${r.is_mobile ? 'mobile' : 'desktop'}</span>
-        <span class="result ${cls}">${outcome || '—'}</span>
+        <span class="result ${cls}">${detail}</span>
       </div>`;
   });
   sessionsHTML += '</div>';
