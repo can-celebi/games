@@ -1,6 +1,12 @@
 /**
  * Game Data Collector
  * Collects interaction data and commits to GitHub repo as JSONL.
+ *
+ * Auto-save triggers:
+ *   - At 30 seconds (snapshot)
+ *   - At 60 seconds (snapshot)
+ *   - On page unload / back button
+ *   - On explicit GameData.save(result) from game code (choice, win, etc.)
  */
 (function () {
   const REPO_OWNER = 'can-celebi';
@@ -10,19 +16,19 @@
   const TOKEN = atob(_k);
   const API_BASE = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents`;
 
-  // Unique session ID + load time
   const SESSION_ID = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
   const PAGE_LOAD_TIME = performance.now();
   const LOAD_TIMESTAMP = new Date().toISOString();
 
   let gameName = '';
+  let saveCount = 0;  // track how many saves this session
+  let saving = false; // prevent concurrent saves
 
   // Data arrays
-  const mouseTrail = [];   // { t, x, y }
-  const keyEvents = [];    // { t, key, dir } dir = 'down' | 'up'
-  const customEvents = []; // { t, type, ...detail }
+  const mouseTrail = [];
+  const keyEvents = [];
+  const customEvents = [];
 
-  // Mouse/touch sampling (throttled to ~60fps = 16ms)
   let lastMouseT = 0;
   const MOUSE_THROTTLE = 16;
 
@@ -68,15 +74,45 @@
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
     }
+
+    // Auto-save at 30s and 60s
+    setTimeout(function () { save({ trigger: 'auto_30s' }); }, 30000);
+    setTimeout(function () { save({ trigger: 'auto_60s' }); }, 60000);
+
+    // Save on page unload (back button, navigation away)
+    window.addEventListener('beforeunload', function () {
+      saveBeacon({ trigger: 'unload' });
+    });
+
+    // Also handle visibility change (mobile tab switch / app switch)
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        saveBeacon({ trigger: 'hidden' });
+      }
+    });
+
+    // Intercept back button clicks
+    document.querySelectorAll('a[href*="index.html"]').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var href = link.getAttribute('href');
+        save({ trigger: 'back_button' }).then(function () {
+          window.location.href = href;
+        }).catch(function () {
+          window.location.href = href;
+        });
+      });
+    });
   }
 
   function logEvent(type, detail) {
     customEvents.push({ t: t(), type, ...(detail || {}) });
   }
 
-  async function save(result) {
-    const record = {
+  function buildRecord(result) {
+    return {
       id: SESSION_ID,
+      save_number: ++saveCount,
       timestamp: LOAD_TIMESTAMP,
       game: gameName,
       duration_ms: Math.round(performance.now() - PAGE_LOAD_TIME),
@@ -84,41 +120,69 @@
       user_agent: navigator.userAgent,
       screen: { w: screen.width, h: screen.height },
       result: result || null,
-      mouse: mouseTrail,
-      keys: keyEvents.length > 0 ? keyEvents : undefined,
-      events: customEvents.length > 0 ? customEvents : undefined
+      mouse: mouseTrail.slice(),
+      keys: keyEvents.length > 0 ? keyEvents.slice() : undefined,
+      events: customEvents.length > 0 ? customEvents.slice() : undefined
     };
+  }
 
-    const line = JSON.stringify(record) + '\n';
-    const filePath = `data/${gameName}.jsonl`;
+  // Beacon-based save for unload (non-blocking, fire-and-forget)
+  function saveBeacon(result) {
+    var record = buildRecord(result);
+    var line = JSON.stringify(record) + '\n';
+    // Use sendBeacon to a simple endpoint — but GitHub API doesn't support it directly
+    // Fallback: store in localStorage for next visit
+    try {
+      var stored = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+      stored.push(record);
+      localStorage.setItem('game_data_fallback', JSON.stringify(stored));
+    } catch (e) {}
+  }
+
+  async function save(result) {
+    if (saving) return false;
+    saving = true;
+
+    var record = buildRecord(result);
+    var line = JSON.stringify(record) + '\n';
+    var filePath = 'data/' + gameName + '.jsonl';
 
     try {
-      let existingContent = '';
-      let sha = null;
+      // Also flush any localStorage fallback data
+      var fallback = [];
+      try {
+        fallback = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+        if (fallback.length > 0) localStorage.removeItem('game_data_fallback');
+      } catch (e) {}
 
-      const getResp = await fetch(`${API_BASE}/${filePath}`, {
-        headers: { 'Authorization': `Bearer ${TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+      var extraLines = fallback.map(function (r) { return JSON.stringify(r) + '\n'; }).join('');
+
+      var existingContent = '';
+      var sha = null;
+
+      var getResp = await fetch(API_BASE + '/' + filePath, {
+        headers: { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github.v3+json' }
       });
 
       if (getResp.ok) {
-        const fileData = await getResp.json();
+        var fileData = await getResp.json();
         sha = fileData.sha;
         existingContent = atob(fileData.content.replace(/\n/g, ''));
       }
 
-      const newContent = existingContent + line;
+      var newContent = existingContent + extraLines + line;
 
-      const putBody = {
-        message: `data: ${gameName} ${SESSION_ID.slice(0, 8)}`,
+      var putBody = {
+        message: 'data: ' + gameName + ' ' + SESSION_ID.slice(0, 8),
         content: btoa(unescape(encodeURIComponent(newContent))),
         committer: { name: 'Game Data Bot', email: 'data@games.bot' }
       };
       if (sha) putBody.sha = sha;
 
-      const putResp = await fetch(`${API_BASE}/${filePath}`, {
+      var putResp = await fetch(API_BASE + '/' + filePath, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${TOKEN}`,
+          'Authorization': 'Bearer ' + TOKEN,
           'Accept': 'application/vnd.github.v3+json',
           'Content-Type': 'application/json'
         },
@@ -126,22 +190,27 @@
       });
 
       if (putResp.ok) {
-        console.log('[data-collector] Saved successfully');
+        console.log('[data-collector] Saved (#' + saveCount + ')');
+        saving = false;
         return true;
       } else {
-        const err = await putResp.json();
+        var err = await putResp.json();
         console.warn('[data-collector] Save failed:', putResp.status, err.message);
         if (putResp.status === 409) {
           console.log('[data-collector] Conflict, retrying...');
+          saving = false;
           return await save(result);
         }
       }
     } catch (e) {
       console.warn('[data-collector] Error:', e.message);
-      const stored = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
-      stored.push(record);
-      localStorage.setItem('game_data_fallback', JSON.stringify(stored));
+      try {
+        var stored = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+        stored.push(record);
+        localStorage.setItem('game_data_fallback', JSON.stringify(stored));
+      } catch (e2) {}
     }
+    saving = false;
     return false;
   }
 
