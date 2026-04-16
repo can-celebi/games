@@ -138,7 +138,7 @@
 
     <div id="win-overlay">
         <h1>Lantern Charged!</h1>
-        <button class="next-btn" onclick="window.location.href='index.html'">Next</button>
+        <button class="next-btn" onclick="GameData.save({ outcome: 'win', trigger: 'next_button' }).then(function(){ window.location.href='index.html'; }).catch(function(){ window.location.href='index.html'; })">Next</button>
     </div>
 
     <script src="data-collector.js"></script>
@@ -250,10 +250,10 @@
             energyFill.style.width = energy + "%";
         }
 
-        function winGame() {
+        async function winGame() {
             gameState = 'WON';
             flashAlpha = 1.0;
-            GameData.save({ outcome: 'win', final_energy: energy });
+            await GameData.save({ outcome: 'win', final_energy: energy });
 
             uiLayer.style.transition = 'opacity 0.8s';
             uiLayer.style.opacity = '0';
