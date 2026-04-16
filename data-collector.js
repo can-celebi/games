@@ -172,11 +172,17 @@
     var filePath = 'data/' + gameName + '.jsonl';
 
     try {
-      // Also flush any localStorage fallback data
+      // Flush localStorage fallback — only records for THIS game
       var fallback = [];
       try {
-        fallback = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
-        if (fallback.length > 0) localStorage.removeItem('game_data_fallback');
+        var allFallback = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+        var remaining = [];
+        allFallback.forEach(function (r) {
+          if (r.game === gameName) fallback.push(r);
+          else remaining.push(r);
+        });
+        if (remaining.length > 0) localStorage.setItem('game_data_fallback', JSON.stringify(remaining));
+        else localStorage.removeItem('game_data_fallback');
       } catch (e) {}
 
       var extraLines = fallback.map(function (r) { return JSON.stringify(r) + '\n'; }).join('');
@@ -184,8 +190,9 @@
       var existingContent = '';
       var sha = null;
 
-      var getResp = await fetch(API_BASE + '/' + filePath, {
-        headers: { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github.v3+json' }
+      var getResp = await fetch(API_BASE + '/' + filePath + '?t=' + Date.now(), {
+        headers: { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github.v3+json' },
+        cache: 'no-store'
       });
 
       if (getResp.ok) {
