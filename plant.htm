@@ -635,10 +635,9 @@ window.onload = function() {
       // === FLOWERS — keep generating new ones every BLOOM_INTERVAL of growth ===
       if (data.growth >= BLOOM_START) {
         const bloomsShouldHave = Math.floor((data.growth - BLOOM_START) / BLOOM_INTERVAL) + 1;
-        const maxDecos = 4; // cap per letter
+        const maxDecos = isMobile ? 1 : 2; // cap per letter
         while (data.decoCount < bloomsShouldHave && data.decoCount < maxDecos) {
-          // Bigger flowers as letter grows: 18px at start → 28px at full
-          const flowerSize = 18 + (data.growth / 150) * 12;
+          const flowerSize = isMobile ? 10 + (data.growth / 150) * 6 : 14 + (data.growth / 150) * 8;
           addLetterDeco(span, makeFlowerSVG(flowerSize));
           data.decoCount++;
         }
@@ -653,8 +652,8 @@ window.onload = function() {
     deco.className = 'letter-deco';
     deco.innerHTML = svgHTML;
     // Position above the letter, randomly offset
-    const offX = (Math.random() - 0.5) * 16;
-    const offY = -8 - Math.random() * 14; // always above
+    const offX = (Math.random() - 0.5) * 12;
+    const offY = -4 - Math.random() * 8; // closer to the letter, less overlap
     deco.style.left = `calc(50% + ${offX}px)`;
     deco.style.top = offY + 'px';
     span.style.position = 'relative';
