@@ -280,15 +280,37 @@ function drawHeatmap(sessions) {
   ctx.fillStyle = '#111';
   ctx.fillRect(0, 0, W, H);
 
-  // Collect all mouse points, normalize to canvas coords
+  // Collect all mouse points, normalized relative to game bounds
+  // If game_bounds available: map game area to full canvas (so all sessions align)
+  // Otherwise: fall back to screen-based normalization
   const allPoints = [];
   sessions.forEach(s => {
-    if (!s.mouse || !s.screen) return;
-    const sx = W / s.screen.w;
-    const sy = H / s.screen.h;
-    s.mouse.forEach(p => {
-      allPoints.push({ x: p.x * sx, y: p.y * sy });
-    });
+    if (!s.mouse) return;
+    const gb = s.game_bounds;
+    if (gb && gb.w > 0 && gb.h > 0) {
+      // Normalize: subtract game origin, scale to canvas
+      const sx = W / gb.w;
+      const sy = H / gb.h;
+      s.mouse.forEach(p => {
+        const nx = (p.x - gb.x) * sx;
+        const ny = (p.y - gb.y) * sy;
+        if (nx >= 0 && nx <= W && ny >= 0 && ny <= H) {
+          allPoints.push({ x: nx, y: ny });
+        }
+      });
+    } else if (s.viewport) {
+      const sx = W / s.viewport.w;
+      const sy = H / s.viewport.h;
+      s.mouse.forEach(p => {
+        allPoints.push({ x: p.x * sx, y: p.y * sy });
+      });
+    } else if (s.screen) {
+      const sx = W / s.screen.w;
+      const sy = H / s.screen.h;
+      s.mouse.forEach(p => {
+        allPoints.push({ x: p.x * sx, y: p.y * sy });
+      });
+    }
   });
 
   if (!allPoints.length) {

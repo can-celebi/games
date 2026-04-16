@@ -21,6 +21,7 @@
   const LOAD_TIMESTAMP = new Date().toISOString();
 
   let gameName = '';
+  let gameElement = null; // the main game container element
   let saveCount = 0;  // track how many saves this session
   let saving = false; // prevent concurrent saves
 
@@ -60,6 +61,13 @@
   function init(name, opts) {
     gameName = name;
     opts = opts || {};
+    // Store reference to game container for bounding box recording
+    if (opts.gameElement) {
+      gameElement = opts.gameElement;
+    } else {
+      // Auto-detect common game containers
+      gameElement = document.querySelector('canvas, #survey-container, #ctr, #content-layer, #game-container, .game-wrapper, .container, .fog-container');
+    }
 
     // Always track mouse/touch
     window.addEventListener('mousemove', onPointerMove);
@@ -110,6 +118,19 @@
     customEvents.push({ t: t(), type, ...(detail || {}) });
   }
 
+  function getGameBounds() {
+    if (!gameElement) return null;
+    try {
+      var rect = gameElement.getBoundingClientRect();
+      return {
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        w: Math.round(rect.width),
+        h: Math.round(rect.height)
+      };
+    } catch (e) { return null; }
+  }
+
   function buildRecord(result) {
     return {
       id: SESSION_ID,
@@ -120,6 +141,8 @@
       is_mobile: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0),
       user_agent: navigator.userAgent,
       screen: { w: screen.width, h: screen.height },
+      viewport: { w: window.innerWidth, h: window.innerHeight },
+      game_bounds: getGameBounds(),
       result: result || null,
       mouse: mouseTrail.slice(),
       keys: keyEvents.length > 0 ? keyEvents.slice() : undefined,
