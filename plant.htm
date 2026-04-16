@@ -376,13 +376,12 @@
 <script>
 window.onload = function() {
 
-  const QUESTION = "What is the primary purpose of an attention check in a survey?";
+  const QUESTION = "Which mythical Pokémon is known as the Guardian of the Forest, whose presence makes plant life flourish?";
   const CHOICES = [
-    { label: "A", text: "To make the survey longer and more tedious for respondents" },
-    { label: "B", text: "To verify that participants are reading questions carefully" },
-    { label: "C", text: "To collect demographic information about the respondent" },
-    { label: "D", text: "To test the respondent's general knowledge on various topics" },
-    { label: "E", text: "To ensure the survey software is functioning correctly" }
+    { label: "A", text: "Pikachu" },
+    { label: "B", text: "Squirtle" },
+    { label: "C", text: "Celebi" },
+    { label: "D", text: "Bulbasaur" }
   ];
 
   const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -395,8 +394,8 @@ window.onload = function() {
 
   // Decoration thresholds — letters sprout EARLY and keep blooming
   const SPROUT_AT = 12;     // growth level to start sprouting
-  const BLOOM_START = isMobile ? 55 : 40;   // first flowers
-  const BLOOM_INTERVAL = isMobile ? 40 : 25; // new flower every N growth
+  const BLOOM_START = isMobile ? 70 : 40;   // first flowers
+  const BLOOM_INTERVAL = isMobile ? 60 : 25; // new flower every N growth
 
   let allChars = [];
   let selected = null;
@@ -406,7 +405,7 @@ window.onload = function() {
   let dripTimer = null;
   let totalWaterEvents = 0;
   let ambientPlantCount = 0;
-  const MAX_AMBIENT_PLANTS = isMobile ? 15 : 40;
+  const MAX_AMBIENT_PLANTS = isMobile ? 8 : 40;
   let butterflyCount = 0, birdCount = 0;
   const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -669,10 +668,10 @@ window.onload = function() {
       if (totalWaterEvents % t === 0) spawnAmbientPlant();
     }
     // Butterflies: max 5, start at 10 events
-    const maxButterflies = isMobile ? 2 : 5;
+    const maxButterflies = isMobile ? 1 : 5;
     if (butterflyCount < maxButterflies && totalWaterEvents > 10 && totalWaterEvents % 18 === 0) spawnButterfly();
     // Birds: LOTS — max 12, start at 5 events, every 8 events
-    const maxBirds = isMobile ? 4 : 12;
+    const maxBirds = isMobile ? 2 : 12;
     if (birdCount < maxBirds && totalWaterEvents > 5 && totalWaterEvents % 8 === 0) spawnBird();
   }
 
