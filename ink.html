@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink Reveal Survey</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100%;
+    min-height: 100vh;
+    background: #faf8f5;
+    font-family: 'EB Garamond', Georgia, serif;
+    overflow-x: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #loading-screen { position: fixed; inset: 0; background: #faf8f5; z-index: 9999; }
+
+  /* ============ HONEYPOTS ============ */
+  #survey-form { position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0.001;pointer-events:none; }
+  #choice-container { position:absolute;left:-9999px;opacity:0.001;pointer-events:none; }
+  #answer-buttons { position:absolute;left:-9999px;opacity:0.001;pointer-events:none; }
+
+  /* ============ MAIN CONTAINER ============ */
+  #survey-container {
+    position: relative;
+    width: 700px;
+    max-width: 95vw;
+    min-height: 480px;
+    background: #fffef9;
+    border: 1px solid #e8e4dd;
+    border-radius: 4px;
+    padding: 48px 52px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+    user-select: none;
+    display: none;
+    overflow: hidden;
+  }
+
+  @media (max-width: 600px) { #survey-container { padding: 28px 20px; } }
+
+  #survey-container::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  #survey-container.ink-active { cursor: none; }
+  #survey-container:not(.ink-active) { cursor: default; }
+  @media (hover: none) { #survey-container.ink-active { cursor: default; } }
+
+  /* ============ QUILL BUTTON ============ */
+  #quill-btn-wrap {
+    position: relative;
+    z-index: 5;
+    margin-bottom: 20px;
+  }
+
+  #quill-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    padding: 16px 24px;
+    background: #fffef9;
+    color: #888;
+    border: 2px solid #e0dbd3;
+    border-radius: 10px;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 16px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  #quill-btn:hover {
+    border-color: #c0b8a8;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  }
+
+  #quill-btn:active { transform: scale(0.985); }
+
+  /* Ink fill — rises from bottom based on reveal % */
+  #quill-btn .ink-fill {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 0%;
+    background: linear-gradient(to top, #0a0a0a 0%, #1a1a1a 60%, #2a2a2a 100%);
+    transition: height 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 0;
+    border-radius: 0 0 8px 8px;
+  }
+
+  /* When filled enough, switch text color */
+  #quill-btn.filled { color: #f0ece6; border-color: #1a1a1a; }
+  #quill-btn.filled:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+
+  /* When active (ink tool grabbed) */
+  #quill-btn.active {
+    border-color: #0a0a0a;
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.08), 0 6px 20px rgba(0,0,0,0.12);
+  }
+
+  /* Quill icon container */
+  #quill-btn .quill-icon-wrap {
+    position: relative;
+    z-index: 1;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  #quill-btn.active .quill-icon-wrap {
+    transform: rotate(-30deg) translateY(-3px);
+  }
+
+  #quill-btn .quill-icon-wrap svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Button text */
+  #quill-btn .btn-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.35;
+  }
+
+  #quill-btn .btn-title {
+    font-size: 16.5px;
+    font-weight: 600;
+    transition: color 0.4s ease;
+  }
+
+  #quill-btn .btn-sub {
+    font-size: 13px;
+    opacity: 0.6;
+    transition: opacity 0.3s ease, color 0.4s ease;
+  }
+
+  /* ============ STATUS BAR ============ */
+  #status-bar {
+    position: relative;
+    z-index: 5;
+    font-size: 13px;
+    color: #a09888;
+    margin-bottom: 24px;
+    min-height: 18px;
+    letter-spacing: 0.3px;
+  }
+
+  #status-bar .status-ink { color: #8a7a60; font-style: italic; }
+  #status-bar .status-select { color: #4a7a4a; }
+
+  /* ============ INK CURSOR ============ */
+  #ink-cursor {
+    position: fixed;
+    width: 38px; height: 38px;
+    pointer-events: none;
+    z-index: 10000;
+    transform: translate(-30%, -90%) rotate(-30deg);
+    transform-origin: bottom center;
+    display: none;
+  }
+
+  #ink-cursor svg {
+    width: 100%; height: 100%;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+  }
+
+  @media (hover: none) { #ink-cursor { display: none !important; } }
+
+  /* ============ QUESTION & CHOICES ============ */
+  .tz { position: relative; z-index: 2; margin-bottom: 28px; }
+  .tz p { font-size: 21px; line-height: 1.55; font-weight: 600; letter-spacing: 0.2px; }
+
+  .vb { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; }
+
+  .rx {
+    padding: 14px 20px;
+    border: 1.5px solid transparent;
+    border-radius: 6px;
+    font-size: 17px;
+    line-height: 1.45;
+    transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .rx.selectable { cursor: pointer; }
+
+  .rx.selectable:hover {
+    border-color: #1a1a1a;
+    background: rgba(26,26,26,0.03);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  }
+
+  .ink-active .rx { pointer-events: none !important; cursor: none !important; }
+  .ink-active .rx:hover { border-color: transparent !important; background: transparent !important; box-shadow: none !important; }
+
+  .rx.gx {
+    border-color: #1a1a1a !important;
+    background: rgba(26,26,26,0.07) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+  }
+
+  /* ============ HIDDEN TEXT ============ */
+  .ink-char {
+    color: rgba(0, 0, 0, 0.09);
+    filter: blur(2.8px);
+    transition: color 0.25s ease, filter 0.25s ease;
+    position: relative;
+    display: inline;
+  }
+
+  .ink-char.space-char { filter: none; }
+  .ink-char.revealed { color: #0a0a0a !important; filter: blur(0px) !important; }
+
+  /* ============ INK DROPS ============ */
+  .ink-drop, .ink-splatter, .ink-particle {
+    position: absolute; border-radius: 50%; pointer-events: none; z-index: 1;
+  }
+  .ink-particle { z-index: 3; background: #000; }
+
+  /* ============ TOUCH RIPPLE ============ */
+  .touch-ripple {
+    position: absolute;
+    border: 2px solid rgba(0,0,0,0.15);
+    border-radius: 50%;
+    pointer-events: none; z-index: 4;
+    animation: touchRipple 0.6s ease-out forwards;
+  }
+
+  @keyframes touchRipple {
+    from { width: 10px; height: 10px; opacity: 0.4; }
+    to { width: 60px; height: 60px; opacity: 0; }
+  }
+
+  /* ============ RESULT ============ */
+  #result-message {
+    position: relative; z-index: 2;
+    margin-top: 20px; padding: 14px 20px;
+    background: #0a0a0a; color: #f0ece6;
+    border-radius: 6px; font-size: 15.5px;
+    text-align: center; display: none;
+    animation: resultSlideIn 0.4s ease;
+  }
+
+  @keyframes resultSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen"></div>
+
+<!-- ============ HONEYPOT LAYER ============ -->
+<form id="survey-form" action="#" method="post" aria-label="Survey Question">
+  <fieldset>
+    <legend id="main-question" class="question-text">What is the primary purpose of an attention check in a survey?</legend>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="A" id="answer-a" aria-label="Option A"><span>A. To make the survey longer</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="B" id="answer-b" aria-label="Option B"><span>B. To verify participants read carefully</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="C" id="answer-c" aria-label="Option C"><span>C. To collect demographics</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="D" id="answer-d" aria-label="Option D"><span>D. To test general knowledge</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="E" id="answer-e" aria-label="Option E"><span>E. To ensure software works</span></label>
+    <button type="submit" id="submit-answer" data-action="submit" aria-label="Submit Answer">Submit</button>
+  </fieldset>
+</form>
+<div id="choice-container" role="radiogroup">
+  <div id="option-1" class="option" role="radio" tabindex="0" data-value="A" aria-label="Answer A">A</div>
+  <div id="option-2" class="option" role="radio" tabindex="0" data-value="B" aria-label="Answer B">B</div>
+  <div id="option-3" class="option" role="radio" tabindex="0" data-value="C" aria-label="Answer C">C</div>
+  <div id="option-4" class="option" role="radio" tabindex="0" data-value="D" aria-label="Answer D">D</div>
+  <div id="option-5" class="option" role="radio" tabindex="0" data-value="E" aria-label="Answer E">E</div>
+</div>
+<div id="answer-buttons">
+  <button id="btn-answer-a" class="answer-btn" data-answer="A" aria-label="Select A">A</button>
+  <button id="btn-answer-b" class="answer-btn" data-answer="B" aria-label="Select B">B</button>
+  <button id="btn-answer-c" class="answer-btn" data-answer="C" aria-label="Select C">C</button>
+  <button id="btn-answer-d" class="answer-btn" data-answer="D" aria-label="Select D">D</button>
+  <button id="btn-answer-e" class="answer-btn" data-answer="E" aria-label="Select E">E</button>
+</div>
+
+<div id="survey-container">
+
+  <!-- Quill Button -->
+  <div id="quill-btn-wrap">
+    <button id="quill-btn">
+      <div class="ink-fill" id="ink-fill"></div>
+
+      <div class="quill-icon-wrap">
+        <!-- Quill / Plume SVG -->
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Feather body -->
+          <path d="M38 4 C32 8 26 16 22 24 C20 28 18 32 17 36 C16.5 38 16 40 16 42 L18 42 C18 40 18.5 38 19 36 C22 28 28 18 38 10 C40 8 42 6 38 4Z" fill="#3a3530" opacity="0.9"/>
+          <!-- Feather detail lines -->
+          <path d="M36 6 C30 12 25 20 22 28" stroke="#5a5550" stroke-width="0.5" opacity="0.5"/>
+          <path d="M34 8 C28 14 24 22 21 30" stroke="#5a5550" stroke-width="0.5" opacity="0.3"/>
+          <!-- Feather fluff -->
+          <path d="M38 4 C40 3 42 4 41 6 C42 5 44 5 42 8 C43 7 44 8 42 10" stroke="#4a4540" stroke-width="0.8" fill="none" opacity="0.6"/>
+          <!-- Nib -->
+          <path d="M17 36 L15 44 L16 42 C16 40 16.5 38 17 36Z" fill="#1a1510"/>
+          <!-- Ink at nib tip -->
+          <circle cx="15.5" cy="43.5" r="1.5" fill="#0a0a0a"/>
+        </svg>
+      </div>
+
+      <div class="btn-content">
+        <span class="btn-title" id="btn-title">Pick up the quill to reveal hidden text</span>
+        <span class="btn-sub" id="btn-sub">Drag across the shaded areas to uncover the question and choices</span>
+      </div>
+    </button>
+  </div>
+
+  <div id="status-bar"></div>
+
+  <div class="tz" id="qa">
+    <p id="qt"></p>
+  </div>
+
+  <div class="vb" id="ca"></div>
+
+  <div id="result-message"></div>
+</div>
+
+<!-- Quill cursor (desktop) -->
+<div id="ink-cursor">
+  <svg viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Feather body -->
+    <path d="M38 2 C32 6 26 14 22 22 C20 26 18 30 17 34 C16.5 36 16 38 15 42 L17 42 C17 40 17.5 38 18 36 C21 28 27 16 38 8 C40 6 42 4 38 2Z" fill="#2a2520" opacity="0.95"/>
+    <path d="M36 4 C30 10 25 18 22 26" stroke="#5a5550" stroke-width="0.4" opacity="0.4"/>
+    <!-- Fluff -->
+    <path d="M38 2 C40 1 42 2 41 4 C42 3 43.5 3.5 42 6 C43 5 44 6 42 8" stroke="#3a3530" stroke-width="0.7" fill="none" opacity="0.5"/>
+    <!-- Nib -->
+    <path d="M16 36 L14 48 L15 44 C15 40 15.5 38 16 36Z" fill="#0d0d0d"/>
+    <!-- Dripping ink -->
+    <circle cx="14" cy="48" r="2" fill="#000" opacity="0.9"/>
+    <ellipse cx="14" cy="52" rx="1.2" ry="1.8" fill="#000" opacity="0.5">
+      <animate attributeName="ry" values="1.8;2.6;1.8" dur="0.7s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="52;53;52" dur="0.7s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;0.8;0.5" dur="0.7s" repeatCount="indefinite"/>
+    </ellipse>
+  </svg>
+</div>
+
+<script>
+window.onload = function() {
+
+  // ===================== CONFIG =====================
+  const QUESTION = "What is the primary purpose of an attention check in a survey?";
+  const CHOICES = [
+    { label: "A", text: "To make the survey longer and more tedious for respondents" },
+    { label: "B", text: "To verify that participants are reading questions carefully" },
+    { label: "C", text: "To collect demographic information about the respondent" },
+    { label: "D", text: "To test the respondent's general knowledge on various topics" },
+    { label: "E", text: "To ensure the survey software is functioning correctly" }
+  ];
+
+  const INK_DROP_RADIUS = 5;
+  const REVEAL_RADIUS = 15;
+  const DISSIPATION_DURATION = 200;
+  const DRIP_INTERVAL = 20;
+  const DRIP_MOVE_THRESHOLD = 5;
+  const PARTICLE_COUNT = 7;
+
+  // ===================== STATE =====================
+  let allCharSpans = [];
+  let selectedChoice = null;
+  let inkToolActive = false;
+  let lastDripTime = 0;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+  let isTouchDevice = false;
+  let currentRevealPct = 0;
+
+  // ===================== MOVEMENT TRACKING =====================
+  const moveXs = [];
+  const moveYs = [];
+  const moveTs = [];
+
+  function recordMove(x, y) {
+    moveXs.push(Math.round(x));
+    moveYs.push(Math.round(y));
+    moveTs.push(Math.round(performance.now()));
+  }
+
+  function serializeMovement() {
+    return 'X:' + moveXs.join('|') + '|Y:' + moveYs.join('|') + '|T:' + moveTs.join('|');
+  }
+
+  window.getMovementData = function() {
+    return { x: moveXs, y: moveYs, t: moveTs, serialized: serializeMovement() };
+  };
+
+  // ===================== REVEAL TRACKING =====================
+  const revealTracker = {
+    log: [],
+    snapshot: function() {
+      const now = performance.now();
+      const nonSpace = allCharSpans.filter(s => !s.classList.contains('space-char'));
+      const revAll = nonSpace.filter(s => s.classList.contains('revealed'));
+      const qChars = nonSpace.filter(s => !s.dataset.ci);
+      const qRev = qChars.filter(s => s.classList.contains('revealed'));
+      const choiceData = CHOICES.map((_, i) => {
+        const ch = nonSpace.filter(s => s.dataset.ci == i);
+        const rv = ch.filter(s => s.classList.contains('revealed'));
+        return { total: ch.length, revealed: rv.length, pct: ch.length ? Math.round(rv.length / ch.length * 1000) / 10 : 0 };
+      });
+      const pct = nonSpace.length ? Math.round(revAll.length / nonSpace.length * 1000) / 10 : 0;
+      const entry = {
+        t: Math.round(now),
+        total: nonSpace.length, revealed: revAll.length, pct,
+        question: { total: qChars.length, revealed: qRev.length, pct: qChars.length ? Math.round(qRev.length / qChars.length * 1000) / 10 : 0 },
+        choices: choiceData,
+        inkActive: inkToolActive
+      };
+      this.log.push(entry);
+      currentRevealPct = pct;
+      return entry;
+    },
+    getLog: function() { return this.log; },
+    getLatest: function() { return this.log.length ? this.log[this.log.length - 1] : null; }
+  };
+  window.revealTracker = revealTracker;
+
+  // ===================== HONEYPOT =====================
+  const honeypotLog = [];
+  window.honeypotLog = honeypotLog;
+  function trapHoneypot(source, detail) {
+    honeypotLog.push({ t: performance.now(), source, detail });
+    console.warn('[HONEYPOT]', source, detail);
+  }
+  document.querySelectorAll('#survey-form input, #survey-form button, #choice-container .option, #answer-buttons .answer-btn').forEach(el => {
+    ['click','focus','change','mousedown','pointerdown'].forEach(evt => {
+      el.addEventListener(evt, () => trapHoneypot(evt, { id: el.id, value: el.value || el.dataset.value || el.dataset.answer || el.textContent }));
+    });
+  });
+  document.getElementById('survey-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const val = document.querySelector('input[name="survey_response"]:checked');
+    trapHoneypot('form-submit', { value: val ? val.value : 'none' });
+  });
+
+  // ===================== ELEMENTS =====================
+  const container = document.getElementById('survey-container');
+  const loadingScreen = document.getElementById('loading-screen');
+  const questionText = document.getElementById('qt');
+  const choicesArea = document.getElementById('ca');
+  const inkCursor = document.getElementById('ink-cursor');
+  const quillBtn = document.getElementById('quill-btn');
+  const inkFill = document.getElementById('ink-fill');
+  const btnTitle = document.getElementById('btn-title');
+  const btnSub = document.getElementById('btn-sub');
+  const statusBar = document.getElementById('status-bar');
+  const resultMessage = document.getElementById('result-message');
+
+  isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+  // ===================== INIT =====================
+  init();
+
+  function init() {
+    wrapTextInSpans(questionText, QUESTION);
+    CHOICES.forEach((choice, index) => {
+      const div = document.createElement('div');
+      div.className = 'rx';
+      div.dataset.dx = index;
+      div.dataset.dl = choice.label;
+      wrapTextInSpans(div, choice.label + ". " + choice.text, true, index);
+      choicesArea.appendChild(div);
+    });
+
+    allCharSpans = Array.from(container.querySelectorAll('.ink-char'));
+
+    loadingScreen.style.display = 'none';
+    container.style.display = 'block';
+
+    updateStatus();
+    updateButtonState();
+    bindEvents();
+    revealTracker.snapshot();
+    setInterval(() => {
+      revealTracker.snapshot();
+      updateButtonState();
+    }, 400);
+  }
+
+  function wrapTextInSpans(element, text, isChoice, choiceIndex) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < text.length; i++) {
+      const span = document.createElement('span');
+      span.className = 'ink-char';
+      if (text[i] === ' ') {
+        span.innerHTML = '&nbsp;';
+        span.classList.add('space-char');
+      } else {
+        span.textContent = text[i];
+      }
+      if (isChoice) span.dataset.ci = choiceIndex;
+      frag.appendChild(span);
+    }
+    element.appendChild(frag);
+  }
+
+  // ===================== BUTTON STATE =====================
+  function updateButtonState() {
+    // Fill height based on reveal %
+    inkFill.style.height = currentRevealPct + '%';
+
+    // Switch colors when filled past 40%
+    if (currentRevealPct > 40) {
+      quillBtn.classList.add('filled');
+    } else {
+      quillBtn.classList.remove('filled');
+    }
+
+    // Update text based on state
+    if (inkToolActive) {
+      btnTitle.textContent = 'Put down the quill to make your choice';
+      btnSub.textContent = Math.round(currentRevealPct) + '% revealed — drag across the shaded areas or put down to answer';
+    } else {
+      const anySelectable = choicesArea.querySelector('.rx.selectable');
+      if (anySelectable) {
+        btnTitle.textContent = 'Select your answer below';
+        btnSub.textContent = Math.round(currentRevealPct) + '% revealed — pick up the quill again to reveal more';
+      } else if (currentRevealPct > 0) {
+        btnTitle.textContent = 'Pick up the quill to keep revealing';
+        btnSub.textContent = Math.round(currentRevealPct) + '% revealed — drag across the shaded areas to unlock choices';
+      } else {
+        btnTitle.textContent = 'Pick up the quill to reveal hidden text';
+        btnSub.textContent = isTouchDevice
+          ? 'Tap here, then drag your finger across the shaded areas'
+          : 'Drag across the shaded areas to uncover the question and choices';
+      }
+    }
+  }
+
+  // ===================== STATUS =====================
+  function updateStatus() {
+    if (selectedChoice !== null) { statusBar.innerHTML = ''; return; }
+    if (inkToolActive) {
+      const msg = isTouchDevice
+        ? 'Drag your finger across the shaded areas to reveal.'
+        : 'Drag your cursor across the shaded areas to reveal.';
+      statusBar.innerHTML = `<span class="status-ink">🖋 ${msg}</span>`;
+    } else {
+      const anySelectable = choicesArea.querySelector('.rx.selectable');
+      if (anySelectable) {
+        statusBar.innerHTML = '<span class="status-select">You may now select your answer below.</span>';
+      } else {
+        statusBar.innerHTML = '';
+      }
+    }
+  }
+
+  // ===================== EVENTS =====================
+  function bindEvents() {
+    quillBtn.addEventListener('click', toggleInkTool);
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('touchstart', onTouchStart, { passive: false });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd, { passive: false });
+    choicesArea.addEventListener('click', onChoiceClick);
+  }
+
+  function toggleInkTool() {
+    if (selectedChoice !== null) return;
+    inkToolActive = !inkToolActive;
+
+    if (inkToolActive) {
+      container.classList.add('ink-active');
+      quillBtn.classList.add('active');
+    } else {
+      container.classList.remove('ink-active');
+      quillBtn.classList.remove('active');
+      inkCursor.style.display = 'none';
+    }
+    updateStatus();
+    updateButtonState();
+  }
+
+  // ===================== DESKTOP MOUSE =====================
+  function onMouseMove(e) {
+    if (!inkToolActive || isTouchDevice) { inkCursor.style.display = 'none'; return; }
+    const rect = container.getBoundingClientRect();
+    const mx = e.clientX, my = e.clientY;
+    if (mx < rect.left || mx > rect.right || my < rect.top || my > rect.bottom) { inkCursor.style.display = 'none'; return; }
+
+    inkCursor.style.display = 'block';
+    inkCursor.style.left = mx + 'px';
+    inkCursor.style.top = my + 'px';
+
+    const dx = mx - lastMouseX, dy = my - lastMouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const now = performance.now();
+
+    if (dist > DRIP_MOVE_THRESHOLD && (now - lastDripTime) > DRIP_INTERVAL) {
+      const x = mx - rect.left, y = my - rect.top;
+      recordMove(x, y);
+      createInkDrop(x, y, false);
+      revealCharsNear(x, y, rect, false);
+      lastDripTime = now;
+      lastMouseX = mx;
+      lastMouseY = my;
+      checkAllRevealed();
+    }
+  }
+
+  // ===================== MOBILE TOUCH =====================
+  function onTouchStart(e) {
+    if (!inkToolActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    lastMouseX = touch.clientX;
+    lastMouseY = touch.clientY;
+    lastDripTime = performance.now();
+    dripAtClient(touch.clientX, touch.clientY);
+  }
+
+  function onTouchMove(e) {
+    if (!inkToolActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mx = touch.clientX, my = touch.clientY;
+    const dx = mx - lastMouseX, dy = my - lastMouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const now = performance.now();
+    if (dist > DRIP_MOVE_THRESHOLD && (now - lastDripTime) > DRIP_INTERVAL) {
+      dripAtClient(mx, my);
+      lastDripTime = now;
+      lastMouseX = mx;
+      lastMouseY = my;
+    }
+  }
+
+  function onTouchEnd(e) {}
+
+  function dripAtClient(clientX, clientY) {
+    const rect = container.getBoundingClientRect();
+    const x = clientX - rect.left, y = clientY - rect.top;
+    if (x < 0 || x > rect.width || y < 0 || y > rect.height) return;
+    recordMove(x, y);
+    createInkDrop(x, y, false);
+    revealCharsNear(x, y, rect, false);
+    createTouchRipple(x, y);
+    checkAllRevealed();
+  }
+
+  function createTouchRipple(x, y) {
+    const r = document.createElement('div');
+    r.className = 'touch-ripple';
+    r.style.left = (x - 5) + 'px';
+    r.style.top = (y - 5) + 'px';
+    container.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  }
+
+  // ===================== CHOICE CLICK =====================
+  function onChoiceClick(e) {
+    if (selectedChoice !== null) return;
+    if (inkToolActive) return;
+    const choiceItem = e.target.closest('.rx.selectable');
+    if (!choiceItem) return;
+
+    selectedChoice = parseInt(choiceItem.dataset.dx);
+    const label = choiceItem.dataset.dl;
+    choiceItem.classList.add('gx');
+
+    const finalSnap = revealTracker.snapshot();
+    const movementStr = serializeMovement();
+
+    resultMessage.textContent = `Choice ${label} is selected.`;
+    resultMessage.style.display = 'block';
+
+    // Transform button into confirmation
+    quillBtn.style.pointerEvents = 'none';
+    btnTitle.textContent = `Choice ${label} recorded`;
+    btnSub.textContent = `${Math.round(currentRevealPct)}% of text was revealed`;
+
+    console.log(`Choice ${label} is triggered`);
+    console.log('Movement data:', movementStr);
+    console.log('Reveal log:', revealTracker.getLog());
+    console.log('Honeypot log:', honeypotLog);
+
+    window.dispatchEvent(new CustomEvent('surveyChoice', {
+      detail: {
+        choice: label,
+        index: selectedChoice,
+        text: CHOICES[selectedChoice].text,
+        movementData: movementStr,
+        movementPoints: moveXs.length,
+        revealAtSelection: finalSnap,
+        revealLog: revealTracker.getLog(),
+        honeypotTriggered: honeypotLog.length > 0,
+        honeypotLog: honeypotLog,
+        isTouchDevice: isTouchDevice
+      }
+    }));
+    updateStatus();
+  }
+
+  // ===================== INK DROP =====================
+  function createInkDrop(x, y) {
+    const drop = document.createElement('div');
+    drop.className = 'ink-drop';
+    const baseR = INK_DROP_RADIUS;
+    const rx = baseR + (Math.random() - 0.5) * 6;
+    const ry = baseR + (Math.random() - 0.5) * 6;
+    drop.style.width = rx * 2 + 'px';
+    drop.style.height = ry * 2 + 'px';
+    drop.style.left = (x - rx) + 'px';
+    drop.style.top = (y - ry) + 'px';
+    drop.style.borderRadius = orgR();
+    drop.style.background = `radial-gradient(ellipse at ${28+Math.random()*14}% ${28+Math.random()*14}%, #0d0d0d 0%, #000 50%, #000 100%)`;
+    drop.style.opacity = '1';
+    container.appendChild(drop);
+
+    const splatN = 1 + ~~(Math.random() * 3);
+    for (let i = 0; i < splatN; i++) {
+      const s = document.createElement('div');
+      s.className = 'ink-splatter';
+      const a = Math.random() * Math.PI * 2;
+      const d = baseR * 0.6 + Math.random() * baseR * 0.7;
+      const sz = 1.5 + Math.random() * 4;
+      s.style.width = sz + 'px';
+      s.style.height = sz + 'px';
+      s.style.left = (x + Math.cos(a) * d - sz / 2) + 'px';
+      s.style.top = (y + Math.sin(a) * d - sz / 2) + 'px';
+      s.style.borderRadius = orgR();
+      s.style.background = '#000';
+      s.style.opacity = '0.9';
+      container.appendChild(s);
+      s.animate([
+        { opacity: 0.9, transform: 'scale(1)' },
+        { opacity: 0.5, transform: 'scale(0.6)' },
+        { opacity: 0, transform: 'scale(0.05)' }
+      ], {
+        duration: DISSIPATION_DURATION * 0.7,
+        easing: 'ease-in', fill: 'forwards',
+        delay: 100 + Math.random() * 200
+      }).onfinish = () => s.remove();
+    }
+
+    dissipate(drop, x, y, baseR);
+  }
+
+  function orgR() {
+    const v = () => Math.round(28 + Math.random() * 44) + '%';
+    return `${v()} ${v()} ${v()} ${v()} / ${v()} ${v()} ${v()} ${v()}`;
+  }
+
+  function dissipate(drop, cx, cy, baseR) {
+    const cRect = container.getBoundingClientRect();
+    const nearbyChars = allCharSpans.filter(span => {
+      if (!span.classList.contains('revealed') || span.classList.contains('space-char')) return false;
+      const sr = span.getBoundingClientRect();
+      const ddx = sr.left + sr.width / 2 - cRect.left - cx;
+      const ddy = sr.top + sr.height / 2 - cRect.top - cy;
+      return Math.sqrt(ddx * ddx + ddy * ddy) < baseR + 50;
+    });
+
+    drop.animate([
+      { transform: 'scale(1)', opacity: 1 },
+      { transform: 'scale(1)', opacity: 1, offset: 0.2 },
+      { transform: 'scale(0.85)', opacity: 0.7, offset: 0.5 },
+      { transform: 'scale(0.4)', opacity: 0.2, offset: 0.8 },
+      { transform: 'scale(0.02)', opacity: 0 }
+    ], {
+      duration: DISSIPATION_DURATION,
+      easing: 'ease-in-out', fill: 'forwards'
+    }).onfinish = () => drop.remove();
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      setTimeout(() => spawnParticle(cx, cy, nearbyChars, cRect), DISSIPATION_DURATION * 0.35 + i * 50);
+    }
+  }
+
+  function spawnParticle(cx, cy, targets, cRect) {
+    const p = document.createElement('div');
+    p.className = 'ink-particle';
+    const sz = 1.5 + Math.random() * 3.5;
+    const sA = Math.random() * Math.PI * 2;
+    const sD = Math.random() * 8;
+    const sx = cx + Math.cos(sA) * sD;
+    const sy = cy + Math.sin(sA) * sD;
+    p.style.width = sz + 'px';
+    p.style.height = sz + 'px';
+    p.style.left = sx + 'px';
+    p.style.top = sy + 'px';
+    p.style.borderRadius = orgR();
+    container.appendChild(p);
+
+    let ex, ey;
+    if (targets.length) {
+      const t = targets[~~(Math.random() * targets.length)];
+      const tr = t.getBoundingClientRect();
+      ex = tr.left + tr.width / 2 - cRect.left + (Math.random() - 0.5) * 6;
+      ey = tr.top + tr.height / 2 - cRect.top + (Math.random() - 0.5) * 6;
+    } else {
+      const a = Math.random() * Math.PI * 2;
+      ex = cx + Math.cos(a) * (15 + Math.random() * 25);
+      ey = cy + Math.sin(a) * (15 + Math.random() * 25);
+    }
+
+    p.animate([
+      { left: sx + 'px', top: sy + 'px', opacity: 0.9, transform: 'scale(1)' },
+      { left: ex + 'px', top: ey + 'px', opacity: 0, transform: 'scale(0.05)' }
+    ], {
+      duration: 350 + Math.random() * 400,
+      easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'forwards'
+    }).onfinish = () => p.remove();
+  }
+
+  // ===================== REVEAL =====================
+  function revealCharsNear(px, py, containerRect) {
+    const radius = REVEAL_RADIUS;
+    allCharSpans.forEach(span => {
+      if (span.classList.contains('revealed')) return;
+      const sr = span.getBoundingClientRect();
+      const ddx = sr.left + sr.width / 2 - containerRect.left - px;
+      const ddy = sr.top + sr.height / 2 - containerRect.top - py;
+      const d = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (d < radius) {
+        const delay = (d / radius) * 80;
+        setTimeout(() => span.classList.add('revealed'), delay);
+      }
+    });
+  }
+
+  // ===================== SELECTABLE CHECK =====================
+  function checkAllRevealed() {
+    CHOICES.forEach((_, index) => {
+      const chars = allCharSpans.filter(s => s.dataset.ci == index && !s.classList.contains('space-char'));
+      const revealed = chars.filter(s => s.classList.contains('revealed')).length;
+      if (chars.length && revealed / chars.length > 0.65) {
+        const item = choicesArea.children[index];
+        if (!item.classList.contains('selectable')) item.classList.add('selectable');
+      }
+    });
+  }
+
+  setInterval(checkAllRevealed, 250);
+
+}; // end window.onload
+</script>
+</body>
+</html>

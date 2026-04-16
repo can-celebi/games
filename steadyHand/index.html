@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Steady Hands</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="game-wrapper">
+        
+        <div class="header-row">
+            <h2>Move the ball to STOP</h2>
+            <button id="helpBtn" class="btn-icon" title="Show Instructions">?</button>
+        </div>
+        
+        <div id="status" class="status-ready">Status: Waiting... (Lives: 3)</div>
+        
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="500" height="500"></canvas>
+        </div>
+
+        <div id="introModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3>How to Play</h3>
+                
+                <div class="instruction-grid">
+                    <div class="step">
+                        <img src="./asset/start.png" alt="Start">
+                        <p><strong>1. Start</strong><br>Grab the ball in the Blue Zone.</p>
+                    </div>
+                    <div class="step">
+                        <img src="./asset/move.png" alt="Move">
+                        <p><strong>2. Move</strong><br>Drag along the path. You can pause (let go), but don't touch walls!</p>
+                    </div>
+                    <div class="step">
+                        <img src="./asset/arrow.png" alt="Goal">
+                        <p><strong>3. The Goal</strong><br>Reach the Green Zone.</p>
+                    </div>
+                </div>
+
+                <button id="startGameBtn" class="btn btn-primary">Start Game</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

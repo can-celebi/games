@@ -1,0 +1,208 @@
+body {
+    background-color: #ffffff;
+    color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    user-select: none;
+    overflow-y: auto;
+}
+
+.container {
+    text-align: center;
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+}
+
+.header-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin-bottom: 15px;
+}
+
+h2 { margin: 0; font-weight: 600; color: #333; }
+.subtitle { margin-top: 5px; color: #666; margin-bottom: 5px; }
+.controls-hint { font-size: 0.9em; color: #999; margin-bottom: 15px; }
+
+/* Help Button */
+.btn-icon {
+    position: absolute;
+    right: 0; top: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.btn-icon:hover { background: #f0f0f0; }
+
+/* GAME AREA - Kept dark internally for contrast with white wind elements */
+.game-wrapper {
+    position: relative;
+    border: 2px solid #eee;
+    border-radius: 12px;
+    background: #222;
+    overflow: hidden;
+    cursor: none;
+    width: 100%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: auto; 
+    touch-action: none;
+}
+
+/* Status Overlay (Inside Canvas) */
+#status-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 5;
+}
+#status-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+    cursor: default;
+}
+#status-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    background: #333;
+    padding: 15px 30px;
+    border-radius: 50px;
+    border: 2px solid #555;
+    cursor: pointer;
+}
+#status-text:hover { background: #444; border-color: #fff; }
+
+/* Progress Bar */
+#timer-bar-bg {
+    width: 100%;
+    height: 12px;
+    background: #eee;
+    margin-top: 15px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+#timer-bar {
+    width: 0%;
+    height: 100%;
+    background: #2196F3;
+    transition: width 0.1s linear;
+}
+
+#game-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 14px;
+    color: #777;
+    padding: 0 5px;
+    font-weight: 500;
+}
+
+#lives-text { font-weight: bold; color: #555; }
+
+/* --- MODAL STYLES --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    transition: opacity 0.3s;
+}
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background: white;
+    color: #333;
+    width: 90%;
+    max-width: 600px;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-content h3 { margin-top: 0; }
+
+.instruction-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 30px 0;
+    justify-content: center;
+    align-items: center;
+}
+
+.step { flex: 1; }
+
+.step img {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    object-fit: contain;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 10px;
+    background: #f9f9f9;
+    margin-bottom: 10px;
+}
+
+.btn-primary {
+    background-color: #2196F3;
+    border: none;
+    color: #fff;
+    padding: 12px 40px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-primary:hover { background-color: #1976D2; }
+
+@media (min-width: 768px) {
+    .modal-content { max-width: 800px; }
+    .instruction-grid {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 30px;
+    }
+    .step img {
+        width: 200px;
+    }
+}

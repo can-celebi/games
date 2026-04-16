@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Catch the Rain</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h2 id="title">Catch the Rain</h2>
+        
+        <div class="stats-row">
+            <span id="scoreDisplay">Score: 0</span>
+            <span id="timerDisplay">Time: 30s</span>
+        </div>
+
+        <canvas id="catchCanvas"></canvas>
+        
+        <p id="instruction">Move the bucket to catch drops.</p>
+    </div>
+
+    <div id="introModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>How to Play</h3>
+            
+            <div class="instruction-grid">
+                <div class="step">
+                    <img src="./asset/catcher_goal.png" alt="Goal">
+                    <p><strong>1. The Goal</strong><br>Catch falling raindrops in the bucket.</p>
+                </div>
+                <div class="step">
+                    <img src="./asset/catcher_controls.png" alt="Controls">
+                    <p><strong>2. Controls</strong><br>Move with Mouse or Arrow Keys.</p>
+                </div>
+                <div class="step">
+                    <img src="./asset/catcher_time.png" alt="Time and Score">
+                    <p><strong>3. Time Limit</strong><br>Catch as many drops as possible before time runs out.</p>
+                </div>
+            </div>
+
+            <button id="startGameBtn" class="btn btn-primary">Start Game</button>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

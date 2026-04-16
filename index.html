@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Games</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 2.5rem;
+      color: #ffffff;
+    }
+
+    .category {
+      max-width: 960px;
+      margin: 0 auto 3rem;
+    }
+
+    .category h2 {
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #888;
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid #2a2a3a;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.2rem;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #4a4a6a;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .card .icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      line-height: 1;
+    }
+
+    .card .name {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .card .desc {
+      font-size: 0.82rem;
+      color: #999;
+      line-height: 1.45;
+    }
+
+    /* Category accent colors */
+    .basic .card:hover   { border-color: #4a9eff; box-shadow: 0 8px 30px rgba(74,158,255,0.15); }
+    .experimental .card:hover { border-color: #b44aff; box-shadow: 0 8px 30px rgba(180,74,255,0.15); }
+
+    .basic .card .icon       { color: #4a9eff; }
+    .experimental .card .icon { color: #b44aff; }
+
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Games</h1>
+
+  <div class="category basic">
+    <h2>Basic</h2>
+    <div class="grid">
+
+      <a class="card" href="steadyHand/index.html">
+        <div class="icon">&#9678;</div>
+        <div class="name">Steady Hand</div>
+        <div class="desc">Guide a ball along a circular track without touching the walls. Precision and patience required.</div>
+      </a>
+
+      <a class="card" href="catcher/index.html">
+        <div class="icon">&#9748;</div>
+        <div class="name">Catcher</div>
+        <div class="desc">Move a bucket to catch falling raindrops blown by the wind. Catch at least 5 in 30 seconds.</div>
+      </a>
+
+      <a class="card" href="pendulum/index.html">
+        <div class="icon">&#9878;</div>
+        <div class="name">Pendulum</div>
+        <div class="desc">Tilt a board to keep a ball balanced in the safe zone for 12 seconds against random wind gusts.</div>
+      </a>
+
+    </div>
+  </div>
+
+  <div class="category experimental">
+    <h2>Experimental</h2>
+    <div class="grid">
+
+      <a class="card" href="darkness.html">
+        <div class="icon">&#128294;</div>
+        <div class="name">Darkness</div>
+        <div class="desc">Chase a firefly to charge your lantern, then hover over the fog to reveal hidden text beneath.</div>
+      </a>
+
+      <a class="card" href="ink.html">
+        <div class="icon">&#9998;</div>
+        <div class="name">Ink</div>
+        <div class="desc">Drag a quill across the page to reveal hidden survey text with ink-drop effects.</div>
+      </a>
+
+      <a class="card" href="plant.htm">
+        <div class="icon">&#127793;</div>
+        <div class="name">Plant</div>
+        <div class="desc">Water tiny letters to make them sprout and bloom into full-sized text with garden life.</div>
+      </a>
+
+    </div>
+  </div>
+
+</body>
+</html>

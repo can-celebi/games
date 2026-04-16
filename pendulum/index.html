@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Balance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="header-row">
+            <h2>Center the Ball</h2>
+            <button id="helpBtn" class="btn-icon" title="Show Instructions">?</button>
+        </div>
+
+        <p class="subtitle">Center the ball. Wind is stronger in the middle!</p>
+        <p class="controls-hint">Controls: Mouse/Touch OR Arrow Keys (← →)</p>
+        
+        <div class="game-wrapper">
+            <div id="status-overlay" class="visible">
+                <div id="status-text">Click to Start</div>
+            </div>
+            <canvas id="simCanvas" width="600" height="350"></canvas>
+        </div>
+        
+        <div id="timer-bar-bg">
+            <div id="timer-bar"></div>
+        </div>
+        
+        <div id="game-info">
+            <span id="timer-text">0.0s / 12.0s</span>
+            <span id="lives-text">Lives: 3</span>
+        </div>
+
+        <div id="introModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3>How to Play</h3>
+                
+                <div class="instruction-grid">
+                    <div class="step">
+                        <img src="./asset/balance_start.png" alt="Start Position">
+                        <p><strong>1. The Start</strong><br>The ball starts on the edge. Be ready to catch it!</p>
+                    </div>
+                    <div class="step">
+                        <img src="./asset/balance_goal.png" alt="Goal">
+                        <p><strong>2. The Goal</strong><br>Keep the ball in the Green Zone for 12 seconds.</p>
+                    </div>
+                    <div class="step">
+                        <img src="./asset/balance_wind.png" alt="Wind Warning">
+                        <p><strong>3. The Wind</strong><br>Strong gusts will push you. Counter-act them!</p>
+                    </div>
+                </div>
+
+                <button id="startGameBtn" class="btn btn-primary">Start Game</button>
+            </div>
+        </div>
+
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>

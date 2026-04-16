@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Survey</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100%;
+    min-height: 100vh;
+    background: #f0ebe3;
+    font-family: 'Libre Baskerville', Georgia, serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  #loading { position: fixed; inset: 0; background: #f0ebe3; z-index: 9999; }
+
+  /* HONEYPOTS */
+  #survey-form { position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0.001;pointer-events:none; }
+  #choice-container { position:absolute;left:-9999px;opacity:0.001;pointer-events:none; }
+  #answer-buttons { position:absolute;left:-9999px;opacity:0.001;pointer-events:none; }
+
+  #ctr {
+    position: relative;
+    width: 720px;
+    max-width: 95vw;
+    min-height: 420px;
+    background: linear-gradient(to bottom, #fdfcf8 0%, #f5f0e6 60%, #e8dfc8 85%, #d8cbb0 100%);
+    border: 1px solid #ddd6c8;
+    border-radius: 8px;
+    padding: 40px 48px 60px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.04), 0 8px 30px rgba(0,0,0,0.025);
+    user-select: none;
+    display: none;
+    overflow: hidden;
+  }
+  @media (max-width: 600px) { #ctr { padding: 24px 18px 40px; } }
+
+  #ctr::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 50px;
+    background: linear-gradient(to bottom, transparent, rgba(120,100,60,0.12));
+    pointer-events: none; z-index: 0;
+  }
+
+  #ground-deco {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 80px;
+    pointer-events: none; z-index: 1; overflow: hidden;
+  }
+
+  /* INSTRUCTION */
+  #inst {
+    position: relative; z-index: 5;
+    display: flex; align-items: flex-start; gap: 12px;
+    margin-bottom: 20px; padding: 12px 16px;
+    background: #3a5a2a; color: #e8f0e4;
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    box-shadow: 0 2px 10px rgba(58,90,42,0.2);
+  }
+  #inst svg { flex-shrink: 0; width: 28px; height: 28px; opacity: 0.9; }
+  #inst strong { color: #c4e8b8; }
+
+  /* WATERING CAN BUTTON */
+  #tool-btn {
+    position: relative; z-index: 5;
+    display: flex; align-items: center; gap: 14px;
+    width: 100%; padding: 14px 20px;
+    background: #fdfcf8; color: #6b5d4f;
+    border: 2px solid #d4ccbc; border-radius: 9px;
+    font-family: 'Libre Baskerville', Georgia, serif; font-size: 15px;
+    cursor: pointer; margin-bottom: 16px; overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.12s;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  #tool-btn:hover { border-color: #5a8a48; box-shadow: 0 3px 12px rgba(90,138,72,0.12); }
+  #tool-btn:active { transform: scale(0.985); }
+  #tool-btn.active { border-color: #4a7a3a; box-shadow: 0 0 0 2px rgba(74,122,58,0.2), 0 4px 14px rgba(90,138,72,0.15); color: #3a5a2a; }
+
+  #tool-btn .fill { position: absolute; left:0;bottom:0;right:0; height:0%; background: linear-gradient(to top, rgba(90,138,72,0.1), rgba(90,138,72,0.03)); transition: height 0.5s; z-index:0; }
+  #tool-btn .ti { position:relative;z-index:1;width:32px;height:32px;flex-shrink:0; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+  #tool-btn.active .ti { transform: rotate(-25deg) translateY(-2px); }
+  #tool-btn .tt { position:relative;z-index:1;display:flex;flex-direction:column;gap:1px; }
+  #tool-btn .t1 { font-size:15px;font-weight:700; }
+  #tool-btn .t2 { font-size:12px;font-family:'DM Sans',sans-serif;opacity:0.55; }
+
+  #status {
+    position: relative; z-index: 5;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12.5px; color: #8a7e6e;
+    margin-bottom: 20px; min-height: 16px;
+  }
+  #status .sa { color: #5a8a48; font-style: italic; }
+  #status .sr { color: #4a7a3a; }
+
+  .qz { position: relative; z-index: 2; margin-bottom: 24px; }
+  .qz > div { display: inline; }
+  .cz { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; }
+
+  .cx {
+    padding: 12px 18px;
+    border: 1.5px solid transparent; border-radius: 6px;
+    transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+    position: relative; -webkit-tap-highlight-color: transparent;
+    display: block; min-height: 28px; cursor: pointer;
+  }
+  .cx > div { display: inline; }
+  .cx:hover {
+    border-color: #4a7a3a; background: rgba(74,122,58,0.04);
+    box-shadow: 0 1px 6px rgba(74,122,58,0.08);
+  }
+  .watering .cx { pointer-events: none!important; cursor: none!important; }
+  .watering .cx:hover { border-color: transparent!important; background: transparent!important; box-shadow:none!important; }
+  .cx.picked {
+    border-color: #4a7a3a!important; background: rgba(74,122,58,0.08)!important;
+    box-shadow: 0 2px 10px rgba(74,122,58,0.1)!important; cursor: default;
+  }
+
+  /* LETTERS */
+  .gc {
+    display: inline-block; font-size: 3px; line-height: 1; color: #5a4a2a;
+    transition: font-size 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s;
+    vertical-align: baseline; position: relative;
+  }
+  .gc.grown { color: #2a1e0e; }
+  .qz .gc.grown { font-weight: 700; }
+
+  /* LETTER DECORATIONS — positioned absolutely, overflow visible */
+  .gc { overflow: visible; }
+
+  .letter-deco {
+    position: absolute;
+    pointer-events: none;
+    z-index: 3;
+    transform-origin: bottom center;
+    animation: decoGrow 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes decoGrow {
+    from { transform: scale(0) translateY(4px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .letter-deco svg { width: 100%; height: 100%; }
+
+  /* RAIN */
+  .rain-drop {
+    position: absolute; pointer-events: none; z-index: 50;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: linear-gradient(to bottom, rgba(100,170,220,0.75), rgba(70,140,200,0.35));
+    opacity: 0;
+  }
+  .rain-drop.falling { animation: conicFall var(--dur) linear forwards; }
+  @keyframes conicFall {
+    0%   { opacity: 0.85; transform: translate(0, 0) scaleY(1); }
+    15%  { opacity: 0.8; }
+    75%  { opacity: 0.55; transform: translate(var(--dx), var(--dy)) scaleY(1.6); }
+    100% { opacity: 0; transform: translate(var(--dx-end), var(--dy-end)) scaleY(0.6); }
+  }
+  .rain-splash {
+    position: absolute; pointer-events: none; z-index: 49;
+    width: 10px; height: 4px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(110,175,220,0.55), transparent);
+    animation: splashOut 0.4s ease-out forwards;
+  }
+  @keyframes splashOut { 0% { transform: scale(0.3); opacity: 0.8; } 100% { transform: scale(2.8); opacity: 0; } }
+  .wdrop {
+    position: absolute; border-radius: 50%; pointer-events: none; z-index: 1;
+    background: radial-gradient(ellipse at 35% 35%, rgba(120,180,220,0.45), rgba(80,140,190,0.2));
+    animation: dropFade 0.7s ease-out forwards;
+  }
+  @keyframes dropFade {
+    0% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.1); opacity: 0.3; }
+    100% { transform: scale(0.2) translateY(4px); opacity: 0; }
+  }
+
+  /* AMBIENT PLANTS */
+  .ambient-plant {
+    position: absolute; bottom: 0; pointer-events: none; z-index: 2;
+    transform-origin: bottom center;
+    animation: plantGrowUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes plantGrowUp {
+    from { transform: scaleY(0) translateY(10px); opacity: 0; }
+    to { transform: scaleY(1) translateY(0); opacity: 1; }
+  }
+  .ambient-plant.sway {
+    animation: plantGrowUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+               sway 3s ease-in-out infinite 0.8s;
+  }
+  @keyframes sway {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(1.5deg); }
+    75% { transform: rotate(-1.5deg); }
+  }
+
+  /* BUTTERFLY */
+  .butterfly {
+    position: absolute; pointer-events: none; z-index: 60;
+    animation: butterflyFloat var(--bf-dur, 8s) ease-in-out infinite;
+  }
+  @keyframes butterflyFloat {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(30px, -15px) rotate(5deg); }
+    50% { transform: translate(-10px, -25px) rotate(-3deg); }
+    75% { transform: translate(20px, -5px) rotate(4deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+  .butterfly svg { animation: flapWings 0.3s ease-in-out infinite alternate; }
+  @keyframes flapWings { from { transform: scaleX(1); } to { transform: scaleX(0.4); } }
+
+  /* BIRDS — multiple flight patterns */
+  .bird {
+    position: absolute; pointer-events: none; z-index: 61;
+  }
+  .bird.fly-r { animation: birdFlyR var(--bird-dur, 10s) linear infinite; }
+  .bird.fly-l { animation: birdFlyL var(--bird-dur, 10s) linear infinite; }
+  .bird.fly-circle { animation: birdCircle var(--bird-dur, 12s) ease-in-out infinite; }
+  .bird.fly-swoop { animation: birdSwoop var(--bird-dur, 9s) ease-in-out infinite; }
+
+  @keyframes birdFlyR {
+    0%   { transform: translate(0, 0); }
+    20%  { transform: translate(70px, -18px); }
+    40%  { transform: translate(150px, -6px); }
+    60%  { transform: translate(230px, -22px); }
+    80%  { transform: translate(310px, -8px); }
+    100% { transform: translate(400px, 0); }
+  }
+  @keyframes birdFlyL {
+    0%   { transform: translate(0, 0) scaleX(-1); }
+    20%  { transform: translate(-60px, -15px) scaleX(-1); }
+    40%  { transform: translate(-140px, -5px) scaleX(-1); }
+    60%  { transform: translate(-210px, -20px) scaleX(-1); }
+    80%  { transform: translate(-300px, -10px) scaleX(-1); }
+    100% { transform: translate(-380px, 0) scaleX(-1); }
+  }
+  @keyframes birdCircle {
+    0%   { transform: translate(0, 0); }
+    25%  { transform: translate(50px, -30px); }
+    50%  { transform: translate(0, -50px); }
+    75%  { transform: translate(-50px, -30px); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes birdSwoop {
+    0%   { transform: translate(0, 0); }
+    30%  { transform: translate(80px, -35px); }
+    50%  { transform: translate(120px, 10px); }
+    70%  { transform: translate(200px, -25px); }
+    100% { transform: translate(300px, 5px); }
+  }
+
+  .bird svg { animation: birdFlap 0.28s ease-in-out infinite alternate; }
+  @keyframes birdFlap { from { transform: scaleY(1); } to { transform: scaleY(0.55) translateY(-1px); } }
+
+  /* WATERING CAN CURSOR */
+  #cursor {
+    position: fixed; width: 64px; height: 64px;
+    pointer-events: none; z-index: 10000;
+    transform: translate(-85%, -5%);
+    display: none;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.25));
+  }
+  #cursor svg { width:100%;height:100%; }
+  @media (hover: none) { #cursor { display:none!important; } }
+
+  #res {
+    position: relative; z-index: 5;
+    margin-top: 18px; padding: 12px 18px;
+    background: #3a5a2a; color: #e8f0e4;
+    border-radius: 6px; font-size: 14.5px;
+    text-align: center; display: none;
+    font-family: 'DM Sans', sans-serif;
+    animation: fu 0.4s ease;
+  }
+  @keyframes fu { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+
+<div id="loading"></div>
+
+<!-- HONEYPOTS -->
+<form id="survey-form" action="#" method="post" aria-label="Survey Question">
+  <fieldset>
+    <legend id="main-question">What is the primary purpose of an attention check in a survey?</legend>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="A" id="answer-a"><span>A. To make the survey longer</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="B" id="answer-b"><span>B. To verify participants read carefully</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="C" id="answer-c"><span>C. To collect demographics</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="D" id="answer-d"><span>D. To test general knowledge</span></label>
+    <label class="answer-option response-choice" data-role="answer"><input type="radio" name="survey_response" value="E" id="answer-e"><span>E. To ensure software works</span></label>
+    <button type="submit" id="submit-answer">Submit</button>
+  </fieldset>
+</form>
+<div id="choice-container" role="radiogroup"><div id="option-1" class="option" role="radio" tabindex="0" data-value="A">A</div><div id="option-2" class="option" role="radio" tabindex="0" data-value="B">B</div><div id="option-3" class="option" role="radio" tabindex="0" data-value="C">C</div><div id="option-4" class="option" role="radio" tabindex="0" data-value="D">D</div><div id="option-5" class="option" role="radio" tabindex="0" data-value="E">E</div></div>
+<div id="answer-buttons"><button class="answer-btn" data-answer="A">A</button><button class="answer-btn" data-answer="B">B</button><button class="answer-btn" data-answer="C">C</button><button class="answer-btn" data-answer="D">D</button><button class="answer-btn" data-answer="E">E</button></div>
+
+<div id="ctr">
+
+  <div id="inst">
+    <svg viewBox="0 0 32 32" fill="none">
+      <path d="M8 12 L8 8 L14 8 L14 10 L16 10 L16 6 L6 6 L6 12Z" fill="#c4e8b8" opacity="0.8"/>
+      <path d="M14 10 L20 14 L18 14 L18 28 L8 28 L8 14 L6 14Z" fill="#c4e8b8"/>
+      <ellipse cx="20" cy="15" rx="1" ry="1" fill="#8cc4e8" opacity="0.7"/>
+      <ellipse cx="18" cy="17" rx="0.8" ry="0.8" fill="#8cc4e8" opacity="0.5"/>
+    </svg>
+    <p>The text below is too small to read! <strong>Pick up the watering can</strong> and pour water over the letters — they'll sprout and grow like plants. Then select your answer.</p>
+  </div>
+
+  <button id="tool-btn">
+    <div class="fill" id="fill"></div>
+    <svg class="ti" viewBox="0 0 40 40" fill="none">
+      <path d="M10 16 L10 11 L18 11 L18 14 L21 14 L21 8 L7 8 L7 16Z" fill="currentColor" opacity="0.7"/>
+      <path d="M18 14 L26 19 L23 19 L23 34 L10 34 L10 19 L7 19Z" fill="currentColor"/>
+      <ellipse cx="26" cy="20.5" rx="1.2" ry="1.2" fill="#78b4dc" opacity="0.8"/>
+      <ellipse cx="24" cy="23" rx="1" ry="1" fill="#78b4dc" opacity="0.6"/>
+    </svg>
+    <div class="tt">
+      <span class="t1" id="bt1">Pick up the watering can</span>
+      <span class="t2" id="bt2">Water the tiny letters to help them grow</span>
+    </div>
+  </button>
+
+  <div id="status"></div>
+  <div class="qz" id="qa"><div id="qt"></div></div>
+  <div class="cz" id="ca"></div>
+  <div id="res"></div>
+  <div id="ground-deco"></div>
+</div>
+
+<!-- WATERING CAN CURSOR -->
+<div id="cursor">
+  <svg viewBox="0 0 72 72" fill="none">
+    <g transform="rotate(-40, 42, 28)">
+      <rect x="28" y="18" width="24" height="30" rx="3" fill="#5a7a4a"/>
+      <rect x="30" y="20" width="20" height="26" rx="2" fill="#6a8a5a"/>
+      <rect x="32" y="22" width="4" height="18" rx="2" fill="rgba(255,255,255,0.13)"/>
+      <path d="M38 18 Q38 7, 50 7 L50 11 Q42 11, 42 18" stroke="#5a7a4a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M28 26 L16 19 L14 22 L26 29Z" fill="#5a7a4a"/>
+      <ellipse cx="14.5" cy="20.5" rx="3" ry="2" fill="#4a6a3a"/>
+    </g>
+    <g opacity="0.7">
+      <line x1="6" y1="34" x2="2" y2="46" stroke="#78b4dc" stroke-width="1.8" stroke-linecap="round">
+        <animate attributeName="y2" values="44;50;44" dur="0.35s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.7;0.35;0.7" dur="0.35s" repeatCount="indefinite"/>
+      </line>
+      <line x1="9" y1="35" x2="6" y2="48" stroke="#78b4dc" stroke-width="1.3" stroke-linecap="round">
+        <animate attributeName="y2" values="46;52;46" dur="0.42s" repeatCount="indefinite"/>
+      </line>
+      <line x1="3" y1="33" x2="-1" y2="44" stroke="#78b4dc" stroke-width="1" stroke-linecap="round">
+        <animate attributeName="y2" values="42;48;42" dur="0.38s" repeatCount="indefinite"/>
+      </line>
+      <circle cx="2" cy="48" r="1.8" fill="#78b4dc" opacity="0.6">
+        <animate attributeName="cy" values="48;54;48" dur="0.45s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.6;0;0.6" dur="0.45s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="6" cy="50" r="1.3" fill="#78b4dc" opacity="0.5">
+        <animate attributeName="cy" values="50;56;50" dur="0.55s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.5;0;0.5" dur="0.55s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+  </svg>
+</div>
+
+<script>
+window.onload = function() {
+
+  const QUESTION = "What is the primary purpose of an attention check in a survey?";
+  const CHOICES = [
+    { label: "A", text: "To make the survey longer and more tedious for respondents" },
+    { label: "B", text: "To verify that participants are reading questions carefully" },
+    { label: "C", text: "To collect demographic information about the respondent" },
+    { label: "D", text: "To test the respondent's general knowledge on various topics" },
+    { label: "E", text: "To ensure the survey software is functioning correctly" }
+  ];
+
+  const MIN_FONT = 3, MAX_FONT = 17, MAX_FONT_C = 16;
+  const WATER_RADIUS = 70, GROW_PER_WATER = 7, DRIP_INTERVAL_MS = 55;
+  const SPOUT_OFFSET_X = -49, SPOUT_OFFSET_Y = 27;
+  const SPRAY_FALL_MIN = 30, SPRAY_FALL_MAX = 60, SPRAY_CONE_HALF = 28, RAIN_COUNT = 8;
+
+  // Decoration thresholds — letters sprout EARLY and keep blooming
+  const SPROUT_AT = 12;     // growth level to start sprouting
+  const BLOOM_START = 40;   // first flowers
+  const BLOOM_INTERVAL = 25; // new flower every +25 growth
+
+  let allChars = [];
+  let selected = null;
+  let toolActive = false;
+  let curMouseX = 0, curMouseY = 0;
+  let mouseInside = false;
+  let dripTimer = null;
+  let totalWaterEvents = 0;
+  let ambientPlantCount = 0;
+  const MAX_AMBIENT_PLANTS = 40;
+  let butterflyCount = 0, birdCount = 0;
+  const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+  const mXs = [], mYs = [], mTs = [];
+  function rec(x, y) { mXs.push(Math.round(x)); mYs.push(Math.round(y)); mTs.push(Math.round(performance.now())); }
+  function ser() { return 'X:' + mXs.join('|') + '|Y:' + mYs.join('|') + '|T:' + mTs.join('|'); }
+  window.getMovementData = () => ({ x: mXs, y: mYs, t: mTs, serialized: ser() });
+
+  const growTracker = {
+    log: [],
+    snap() {
+      const ns = allChars.filter(c => !c.sp);
+      const grownCount = ns.filter(c => c.growth >= 100).length;
+      const avgGrowth = ns.length ? Math.round(ns.reduce((s, c) => s + c.growth, 0) / ns.length * 10) / 10 : 0;
+      const qChars = ns.filter(c => c.ci === undefined);
+      const qAvg = qChars.length ? Math.round(qChars.reduce((s, c) => s + c.growth, 0) / qChars.length * 10) / 10 : 0;
+      const cData = CHOICES.map((_, i) => {
+        const cc = ns.filter(c => c.ci === i);
+        const avg = cc.length ? Math.round(cc.reduce((s, c) => s + c.growth, 0) / cc.length * 10) / 10 : 0;
+        return { total: cc.length, avg };
+      });
+      return { t: Math.round(performance.now()), total: ns.length, grown: grownCount, avgGrowth, question: { avg: qAvg }, choices: cData, toolActive };
+    }
+  };
+  window.growTracker = growTracker;
+
+  const hpLog = [];
+  window.honeypotLog = hpLog;
+  function hp(s, d) { hpLog.push({ t: performance.now(), source: s, detail: d }); }
+  document.querySelectorAll('#survey-form input,#survey-form button,#choice-container .option,#answer-buttons .answer-btn').forEach(el => {
+    ['click','focus','change','mousedown','pointerdown'].forEach(ev =>
+      el.addEventListener(ev, () => hp(ev, { id: el.id, value: el.value||el.dataset.value||el.dataset.answer||el.textContent }))
+    );
+  });
+  document.getElementById('survey-form').addEventListener('submit', e => { e.preventDefault(); hp('submit', {}); });
+
+  const ctr = document.getElementById('ctr');
+  const qt = document.getElementById('qt');
+  const ca = document.getElementById('ca');
+  const cursorEl = document.getElementById('cursor');
+  const toolBtn = document.getElementById('tool-btn');
+  const fillBar = document.getElementById('fill');
+  const bt1 = document.getElementById('bt1');
+  const bt2 = document.getElementById('bt2');
+  const statusEl = document.getElementById('status');
+  const resMsg = document.getElementById('res');
+  const groundDeco = document.getElementById('ground-deco');
+
+  // ====== DECORATION SVG FACTORIES ======
+  // These return SVG strings at a given pixel size
+
+  function makeSproutSVG(sz) {
+    const h = sz, w = sz * 0.7;
+    const variants = [
+      `<svg viewBox="0 0 14 20" width="${w}" height="${h}"><path d="M7 20 L7 8" stroke="#7ab860" stroke-width="1.5" stroke-linecap="round"/><path d="M7 10 Q2 6 5 1" fill="#8ac870" opacity="0.8"/><path d="M7 12 Q12 8 10 3" fill="#7ab860" opacity="0.7"/></svg>`,
+      `<svg viewBox="0 0 12 18" width="${w}" height="${h}"><path d="M6 18 L6 6" stroke="#6a9a50" stroke-width="1.3"/><path d="M6 8 Q1 4 4 0" fill="#7ab860" opacity="0.75"/><path d="M6 10 Q11 7 9 2" fill="#8ac870" opacity="0.65"/><path d="M6 13 Q2 10 3 6" fill="#6a9a50" opacity="0.5"/></svg>`,
+      `<svg viewBox="0 0 10 16" width="${w}" height="${h}"><path d="M5 16 L5 4" stroke="#5a8a40" stroke-width="1.2"/><ellipse cx="5" cy="3" rx="4" ry="3" fill="#7ab860" opacity="0.7"/></svg>`,
+    ];
+    return variants[Math.floor(Math.random() * variants.length)];
+  }
+
+  function makeFlowerSVG(sz) {
+    const colors = ['#e88a9a','#f0a0b0','#c4a0e8','#f0d060','#78b4dc','#f0a050','#e8c8f0','#a0d890'];
+    const c1 = colors[Math.floor(Math.random()*colors.length)];
+    const c2 = colors[Math.floor(Math.random()*colors.length)];
+    const variants = [
+      // Rose-like
+      `<svg viewBox="0 0 20 28" width="${sz*0.7}" height="${sz}"><path d="M10 28 L10 14" stroke="#6a9a50" stroke-width="1.5" stroke-linecap="round"/><path d="M10 18 Q5 15 6 11" fill="#7ab860" opacity="0.6"/><circle cx="10" cy="9" r="5" fill="${c1}" opacity="0.8"/><circle cx="7.5" cy="10.5" r="3.5" fill="${c2}" opacity="0.6"/><circle cx="12.5" cy="10.5" r="3.5" fill="${c2}" opacity="0.6"/><circle cx="10" cy="7" r="3.5" fill="${c1}" opacity="0.7"/><circle cx="10" cy="9.5" r="2" fill="#f0d060" opacity="0.9"/></svg>`,
+      // Daisy
+      `<svg viewBox="0 0 22 30" width="${sz*0.75}" height="${sz}"><path d="M11 30 L11 16" stroke="#6a9a50" stroke-width="1.5"/><path d="M11 22 Q6 19 7 14" fill="#7ab860" opacity="0.6"/><g transform="translate(11,10)">${[0,60,120,180,240,300].map(a=>`<ellipse cx="0" cy="-5" rx="2.5" ry="5" fill="#fff" opacity="0.8" transform="rotate(${a})"/>`).join('')}</g><circle cx="11" cy="10" r="3" fill="#f0d060"/></svg>`,
+      // Tulip
+      `<svg viewBox="0 0 18 28" width="${sz*0.65}" height="${sz}"><path d="M9 28 L9 12" stroke="#5a8a40" stroke-width="1.5"/><path d="M9 18 Q4 15 5 10" fill="#6a9a50" opacity="0.5"/><path d="M3 10 Q5 0 9 2 Q13 0 15 10 Q12 8 9 9 Q6 8 3 10Z" fill="${c1}" opacity="0.85"/><path d="M6 9 Q7 4 9 5 Q11 4 12 9 Q10 7 9 7.5 Q8 7 6 9Z" fill="${c2}" opacity="0.5"/></svg>`,
+      // Sunflower
+      `<svg viewBox="0 0 24 32" width="${sz*0.75}" height="${sz}"><path d="M12 32 L12 18" stroke="#5a8a40" stroke-width="2"/><path d="M12 24 Q7 21 8 16" fill="#6a9a50" opacity="0.6"/><path d="M12 26 Q17 23 16 18" fill="#7ab860" opacity="0.5"/><g transform="translate(12,11)">${[0,30,60,90,120,150,180,210,240,270,300,330].map(a=>`<ellipse cx="0" cy="-6" rx="2" ry="5" fill="#f0c020" opacity="0.8" transform="rotate(${a})"/>`).join('')}</g><circle cx="12" cy="11" r="4" fill="#8a6020"/><circle cx="12" cy="11" r="2.5" fill="#6a4010" opacity="0.6"/></svg>`,
+    ];
+    return variants[Math.floor(Math.random() * variants.length)];
+  }
+
+  const AMBIENT_PLANT_SVGS = [
+    (h) => `<svg viewBox="0 0 20 ${h}" width="14" height="${h}"><path d="M10 ${h} Q8 ${h*0.4} 6 0" stroke="#7ab860" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M10 ${h} Q12 ${h*0.5} 14 ${h*0.1}" stroke="#8ac870" stroke-width="1.2" fill="none" stroke-linecap="round"/><path d="M10 ${h} Q9 ${h*0.6} 4 ${h*0.3}" stroke="#6a9a50" stroke-width="1" fill="none" stroke-linecap="round"/></svg>`,
+    (h) => `<svg viewBox="0 0 24 ${h}" width="18" height="${h}"><ellipse cx="12" cy="${h*0.5}" rx="10" ry="${h*0.45}" fill="#6a9a50" opacity="0.6"/><ellipse cx="10" cy="${h*0.45}" rx="7" ry="${h*0.35}" fill="#7ab860" opacity="0.7"/><path d="M12 ${h} L12 ${h*0.55}" stroke="#5a8a40" stroke-width="1.5"/></svg>`,
+    (h) => {
+      const colors = ['#e88a9a','#f0d060','#c4a0e8','#78b4dc','#f0a050'];
+      const c = colors[Math.floor(Math.random()*colors.length)];
+      return `<svg viewBox="0 0 16 ${h}" width="10" height="${h}"><path d="M8 ${h} L8 ${h*0.25}" stroke="#6a9a50" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="${h*0.2}" r="3.5" fill="${c}" opacity="0.8"/><circle cx="8" cy="${h*0.2}" r="1.5" fill="#f0d060" opacity="0.9"/><path d="M8 ${h*0.5} Q4 ${h*0.4} 5 ${h*0.25}" fill="#7ab860" opacity="0.6"/></svg>`;
+    },
+    (h) => `<svg viewBox="0 0 22 ${h}" width="16" height="${h}"><path d="M11 ${h} L11 ${h*0.15}" stroke="#5a8a40" stroke-width="1"/><path d="M11 ${h*0.7} Q5 ${h*0.5} 3 ${h*0.3}" stroke="#7ab860" stroke-width="0.8" fill="none"/><path d="M11 ${h*0.7} Q17 ${h*0.5} 19 ${h*0.3}" stroke="#7ab860" stroke-width="0.8" fill="none"/><path d="M11 ${h*0.5} Q6 ${h*0.3} 4 ${h*0.1}" stroke="#6a9a50" stroke-width="0.8" fill="none"/><path d="M11 ${h*0.5} Q16 ${h*0.3} 18 ${h*0.1}" stroke="#6a9a50" stroke-width="0.8" fill="none"/></svg>`,
+    (h) => `<svg viewBox="0 0 30 ${h}" width="22" height="${h}"><rect x="13" y="${h*0.6}" width="4" height="${h*0.4}" rx="1" fill="#8a7050"/><ellipse cx="15" cy="${h*0.35}" rx="12" ry="${h*0.38}" fill="#5a8a40" opacity="0.7"/><ellipse cx="13" cy="${h*0.3}" rx="9" ry="${h*0.3}" fill="#6a9a50" opacity="0.8"/><ellipse cx="17" cy="${h*0.25}" rx="7" ry="${h*0.22}" fill="#7ab860" opacity="0.6"/></svg>`
+  ];
+
+  function makeButterflyEl() {
+    const colors = [['#e88a9a','#c06a7a'],['#c4a0e8','#9070b8'],['#f0a050','#c07030'],['#78b4dc','#5090b0']];
+    const [c1,c2] = colors[Math.floor(Math.random()*colors.length)];
+    const el = document.createElement('div');
+    el.className = 'butterfly';
+    el.style.cssText = `--bf-dur:${6+Math.random()*6}s;`;
+    el.innerHTML = `<svg viewBox="0 0 24 16" width="18" height="12"><path d="M12 8 Q6 2 2 6 Q6 10 12 8Z" fill="${c1}" opacity="0.8"/><path d="M12 8 Q18 2 22 6 Q18 10 12 8Z" fill="${c1}" opacity="0.8"/><path d="M12 8 Q8 4 5 6 Q8 9 12 8Z" fill="${c2}" opacity="0.5"/><path d="M12 8 Q16 4 19 6 Q16 9 12 8Z" fill="${c2}" opacity="0.5"/><line x1="12" y1="8" x2="12" y2="1" stroke="#4a3020" stroke-width="0.5"/></svg>`;
+    return el;
+  }
+
+  function makeBirdEl() {
+    const colors = ['#4a3020','#6a5040','#3a4a5a','#5a4a3a','#3a3a2a','#7a6050'];
+    const c = colors[Math.floor(Math.random()*colors.length)];
+    const patterns = ['fly-r','fly-l','fly-circle','fly-swoop'];
+    const pattern = patterns[Math.floor(Math.random()*patterns.length)];
+    const dur = 7 + Math.random() * 10;
+    const size = 14 + Math.random() * 8;
+    const el = document.createElement('div');
+    el.className = `bird ${pattern}`;
+    el.style.cssText = `--bird-dur:${dur}s; animation-delay:${Math.random()*dur}s;`;
+    el.innerHTML = `<svg viewBox="0 0 20 10" width="${size}" height="${size*0.5}">
+      <path d="M2 6 Q5 2 10 5 Q15 2 18 6" stroke="${c}" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <circle cx="10" cy="5.5" r="1.3" fill="${c}" opacity="0.85"/>
+      <path d="M11.3 5.3 L14 4.8" stroke="${c}" stroke-width="0.7" stroke-linecap="round"/>
+    </svg>`;
+    return el;
+  }
+
+  // ====== INIT ======
+  init();
+
+  function init() {
+    wrapChars(qt, QUESTION, false, null, MAX_FONT);
+    CHOICES.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'cx'; div.dataset.dx = i; div.dataset.dl = c.label;
+      const inner = document.createElement('div');
+      wrapChars(inner, c.label + ". " + c.text, true, i, MAX_FONT_C);
+      div.appendChild(inner); ca.appendChild(div);
+    });
+    allChars = Array.from(ctr.querySelectorAll('.gc'));
+    document.getElementById('loading').style.display = 'none';
+    ctr.style.display = 'block';
+    updateStatus(); updateBtn();
+    growTracker.snap();
+    setInterval(() => { growTracker.snap(); updateBtn(); }, 500);
+    bindEvents();
+  }
+
+  function wrapChars(el, text, isChoice, ci, maxF) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < text.length; i++) {
+      const span = document.createElement('span');
+      span.className = 'gc';
+      if (text[i] === ' ') { span.innerHTML = '&nbsp;'; span.classList.add('sp'); }
+      else { span.textContent = text[i]; }
+      span.style.fontSize = MIN_FONT + 'px';
+      span._data = {
+        growth: 0, maxFont: maxF, ci: isChoice ? ci : undefined,
+        sp: text[i] === ' ', sprouted: false,
+        lastBloomAt: 0,  // track last bloom growth level
+        decoCount: 0     // how many decorations on this letter
+      };
+      Object.defineProperty(span, 'growth', { get() { return this._data.growth; }, set(v) { this._data.growth = v; } });
+      Object.defineProperty(span, 'ci', { get() { return this._data.ci; } });
+      Object.defineProperty(span, 'sp', { get() { return this._data.sp; } });
+      frag.appendChild(span);
+    }
+    el.appendChild(frag);
+  }
+
+  // ====== SPOUT GEOMETRY ======
+  function getSpoutPos(mx, my, cRect) {
+    return { sx: (mx - cRect.left) + SPOUT_OFFSET_X, sy: (my - cRect.top) + SPOUT_OFFSET_Y };
+  }
+  function getLandingCenter(sx, sy) {
+    return { landX: sx, landY: sy + (SPRAY_FALL_MIN + SPRAY_FALL_MAX) / 2 };
+  }
+
+  // ====== CONIC RAIN ======
+  function spawnConicRain(sx, sy) {
+    for (let i = 0; i < RAIN_COUNT; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'rain-drop';
+      const fallDist = SPRAY_FALL_MIN + Math.random() * (SPRAY_FALL_MAX - SPRAY_FALL_MIN);
+      const spread = SPRAY_CONE_HALF * (fallDist / SPRAY_FALL_MAX);
+      const dx = (Math.random() - 0.5) * 2 * spread;
+      const dxEnd = dx * 1.15, dyEnd = fallDist * 1.08;
+      const duration = 0.28 + Math.random() * 0.2;
+      const delay = Math.random() * 50;
+      drop.style.cssText = `left:${sx}px;top:${sy}px;width:${2+Math.random()*1.5}px;height:${5+Math.random()*5}px;--dx:${dx*0.7}px;--dy:${fallDist*0.75}px;--dx-end:${dxEnd}px;--dy-end:${dyEnd}px;--dur:${duration}s;animation-delay:${delay}ms;`;
+      requestAnimationFrame(() => drop.classList.add('falling'));
+      ctr.appendChild(drop);
+      setTimeout(() => {
+        const s = document.createElement('div'); s.className = 'rain-splash';
+        s.style.left = (sx+dxEnd-5)+'px'; s.style.top = (sy+dyEnd)+'px';
+        ctr.appendChild(s); s.addEventListener('animationend', () => s.remove());
+      }, delay + duration * 800);
+      drop.addEventListener('animationend', () => drop.remove());
+    }
+  }
+
+  // ====== GROW + DECORATE ======
+  function waterAt(landX, landY) {
+    const cRect = ctr.getBoundingClientRect();
+    totalWaterEvents++;
+    rec(landX, landY);
+
+    allChars.forEach(span => {
+      const sr = span.getBoundingClientRect();
+      const cx = sr.left + sr.width / 2 - cRect.left;
+      const cy = sr.top + sr.height / 2 - cRect.top;
+      const d = Math.sqrt((cx - landX) ** 2 + (cy - landY) ** 2);
+      if (d >= WATER_RADIUS) return;
+
+      const data = span._data;
+      if (data.growth >= 150) return;
+
+      const amount = GROW_PER_WATER * (1 - d / WATER_RADIUS);
+      data.growth = Math.min(data.growth + amount, 150);
+      const growPct = Math.min(data.growth, 100) / 100;
+      span.style.fontSize = (MIN_FONT + (data.maxFont - MIN_FONT) * growPct) + 'px';
+      const cp = Math.min(growPct, 1);
+      span.style.color = `rgb(${Math.round(90-cp*48)},${Math.round(74-cp*44)},${Math.round(42-cp*28)})`;
+      if (growPct >= 1) span.classList.add('grown');
+
+      if (data.sp) return;
+
+      // === SPROUT at low growth — BIG sprout (16-22px) ===
+      if (data.growth >= SPROUT_AT && !data.sprouted) {
+        if (Math.random() < 0.6) {
+          addLetterDeco(span, makeSproutSVG(16 + Math.random() * 6));
+        }
+        data.sprouted = true;
+      }
+
+      // === FLOWERS — keep generating new ones every BLOOM_INTERVAL of growth ===
+      if (data.growth >= BLOOM_START) {
+        const bloomsShouldHave = Math.floor((data.growth - BLOOM_START) / BLOOM_INTERVAL) + 1;
+        const maxDecos = 4; // cap per letter
+        while (data.decoCount < bloomsShouldHave && data.decoCount < maxDecos) {
+          // Bigger flowers as letter grows: 18px at start → 28px at full
+          const flowerSize = 18 + (data.growth / 150) * 12;
+          addLetterDeco(span, makeFlowerSVG(flowerSize));
+          data.decoCount++;
+        }
+      }
+    });
+
+    maybeSpawnAmbientLife();
+  }
+
+  function addLetterDeco(span, svgHTML) {
+    const deco = document.createElement('div');
+    deco.className = 'letter-deco';
+    deco.innerHTML = svgHTML;
+    // Position above the letter, randomly offset
+    const offX = (Math.random() - 0.5) * 16;
+    const offY = -8 - Math.random() * 14; // always above
+    deco.style.left = `calc(50% + ${offX}px)`;
+    deco.style.top = offY + 'px';
+    span.style.position = 'relative';
+    span.appendChild(deco);
+  }
+
+  // ====== AMBIENT LIFE ======
+  function maybeSpawnAmbientLife() {
+    if (ambientPlantCount < MAX_AMBIENT_PLANTS) {
+      const t = ambientPlantCount < 5 ? 5 : ambientPlantCount < 15 ? 3 : 2;
+      if (totalWaterEvents % t === 0) spawnAmbientPlant();
+    }
+    // Butterflies: max 5, start at 10 events
+    if (butterflyCount < 5 && totalWaterEvents > 10 && totalWaterEvents % 18 === 0) spawnButterfly();
+    // Birds: LOTS — max 12, start at 5 events, every 8 events
+    if (birdCount < 12 && totalWaterEvents > 5 && totalWaterEvents % 8 === 0) spawnBird();
+  }
+
+  function spawnAmbientPlant() {
+    const plant = document.createElement('div');
+    plant.className = 'ambient-plant sway';
+    const height = 20 + Math.random() * 42;
+    plant.innerHTML = AMBIENT_PLANT_SVGS[Math.floor(Math.random()*AMBIENT_PLANT_SVGS.length)](height);
+    const leftPct = ambientPlantCount < 10
+      ? (Math.random() < 0.5 ? Math.random()*18 : 82+Math.random()*18)
+      : Math.random()*100;
+    plant.style.left = leftPct+'%'; plant.style.bottom = '0px';
+    plant.style.animationDelay = (Math.random()*0.3)+'s';
+    groundDeco.appendChild(plant);
+    ambientPlantCount++;
+  }
+
+  function spawnButterfly() {
+    const bf = makeButterflyEl();
+    bf.style.left = (10+Math.random()*80)+'%';
+    bf.style.top = (5+Math.random()*45)+'%';
+    ctr.appendChild(bf); butterflyCount++;
+  }
+
+  function spawnBird() {
+    const bird = makeBirdEl();
+    // Scatter birds across the whole container, various starting positions
+    bird.style.left = (-10 + Math.random()*100) + '%';
+    bird.style.top = (2 + Math.random()*35) + '%';
+    ctr.appendChild(bird); birdCount++;
+  }
+
+  function createDrop(x, y) {
+    const drop = document.createElement('div'); drop.className = 'wdrop';
+    const sz = 3+Math.random()*4;
+    drop.style.width=sz+'px'; drop.style.height=sz+'px';
+    drop.style.left=(x-sz/2+(Math.random()-0.5)*10)+'px';
+    drop.style.top=(y-sz/2+(Math.random()-0.5)*6)+'px';
+    ctr.appendChild(drop);
+    drop.addEventListener('animationend', () => drop.remove());
+  }
+
+  // ====== CONTINUOUS DRIP ======
+  function startDripTimer() {
+    if (dripTimer) return;
+    dripTimer = setInterval(() => {
+      if (!toolActive || !mouseInside) return;
+      doDrip(curMouseX, curMouseY);
+    }, DRIP_INTERVAL_MS);
+  }
+  function stopDripTimer() { if (dripTimer) { clearInterval(dripTimer); dripTimer=null; } }
+
+  function doDrip(mx, my) {
+    const cRect = ctr.getBoundingClientRect();
+    const {sx,sy} = getSpoutPos(mx,my,cRect);
+    const {landX,landY} = getLandingCenter(sx,sy);
+    if (landX<-20||landX>cRect.width+20||landY<0||landY>cRect.height+20) return;
+    spawnConicRain(sx,sy); waterAt(landX,landY); createDrop(landX,landY);
+  }
+
+  // ====== UI ======
+  function getOverallGrowth() {
+    const ns = allChars.filter(c => !c.sp);
+    if (!ns.length) return 0;
+    return Math.round(ns.reduce((s,c) => s+Math.min(c.growth,100),0)/ns.length);
+  }
+
+  function updateBtn() {
+    const pct = getOverallGrowth();
+    fillBar.style.height = Math.min(pct,100)+'%';
+    if (selected !== null) return;
+    if (toolActive) {
+      bt1.textContent = 'Put down the watering can';
+      bt2.textContent = 'Move over text to grow it, then select your answer';
+    } else {
+      bt1.textContent = 'Pick up the watering can';
+      bt2.textContent = pct > 0 ? 'Keep watering, or click a choice to answer' : 'Water the tiny letters to help them grow';
+    }
+  }
+
+  function updateStatus() {
+    if (selected !== null) { statusEl.innerHTML=''; return; }
+    if (toolActive) {
+      statusEl.innerHTML = `<span class="sa">🌧️ ${isTouch ? 'Drag your finger to pour water.' : 'Hold the can over text — water pours from the spout.'}</span>`;
+    } else {
+      statusEl.innerHTML = '<span class="sr">Click on a choice to select your answer.</span>';
+    }
+  }
+
+  // ====== EVENTS ======
+  function bindEvents() {
+    toolBtn.addEventListener('click', toggle);
+    ctr.addEventListener('mousemove', onMM);
+    ctr.addEventListener('mouseenter', () => { mouseInside=true; });
+    ctr.addEventListener('mouseleave', () => { mouseInside=false; cursorEl.style.display='none'; });
+    ctr.addEventListener('touchstart', onTS, {passive:false});
+    ctr.addEventListener('touchmove', onTM, {passive:false});
+    ctr.addEventListener('touchend', () => { mouseInside=false; });
+    ca.addEventListener('click', onPick);
+  }
+
+  function toggle() {
+    if (selected !== null) return;
+    toolActive = !toolActive;
+    if (toolActive) { ctr.classList.add('watering'); toolBtn.classList.add('active'); startDripTimer(); }
+    else { ctr.classList.remove('watering'); toolBtn.classList.remove('active'); cursorEl.style.display='none'; stopDripTimer(); }
+    updateStatus(); updateBtn();
+  }
+
+  function onMM(e) {
+    curMouseX=e.clientX; curMouseY=e.clientY; mouseInside=true;
+    if (!toolActive||isTouch) { cursorEl.style.display='none'; return; }
+    cursorEl.style.display='block'; cursorEl.style.left=e.clientX+'px'; cursorEl.style.top=e.clientY+'px';
+  }
+
+  function onTS(e) {
+    if (!toolActive) return;
+    e.preventDefault(); mouseInside=true;
+    curMouseX=e.touches[0].clientX; curMouseY=e.touches[0].clientY;
+    startDripTimer(); doDrip(curMouseX,curMouseY);
+  }
+  function onTM(e) {
+    if (!toolActive) return;
+    e.preventDefault(); curMouseX=e.touches[0].clientX; curMouseY=e.touches[0].clientY; mouseInside=true;
+  }
+
+  function onPick(e) {
+    if (selected !== null || toolActive) return;
+    const div = e.target.closest('.cx');
+    if (!div) return;
+    selected = parseInt(div.dataset.dx);
+    const label = div.dataset.dl;
+    div.classList.add('picked');
+    stopDripTimer();
+    const snap = growTracker.snap();
+    const pct = getOverallGrowth();
+
+    resMsg.textContent = `Choice ${label} selected. 🌻`;
+    resMsg.style.display = 'block';
+    toolBtn.style.pointerEvents = 'none';
+    bt1.textContent = `Choice ${label} recorded`;
+    bt2.textContent = pct > 0 ? `Your garden is ${pct}% grown` : 'Answer recorded';
+
+    console.log(`Choice ${label} is triggered`);
+    console.log('Movement:', ser());
+    console.log('Grow log:', growTracker.log);
+    console.log('Honeypot:', hpLog);
+
+    window.dispatchEvent(new CustomEvent('surveyChoice', {
+      detail: {
+        choice: label, index: selected, text: CHOICES[selected].text,
+        movementData: ser(), movementPoints: mXs.length,
+        growthAtSelection: pct, growAtSelection: snap, growLog: growTracker.log,
+        honeypotTriggered: hpLog.length > 0, honeypotLog: hpLog, isTouchDevice: isTouch
+      }
+    }));
+    updateStatus();
+  }
+
+};
+</script>
+</body>
+</html>
