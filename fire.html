@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fog of War Game</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #050100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #ffffff;
+            cursor: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #content-layer {
+            background: transparent;
+            padding: 60px;
+            max-width: 650px;
+            text-align: left;
+            z-index: 1;
+            border: none; 
+            /* UPDATED: Bright Core Orange with subtle inner heat glow */
+            color: #ffcc00; 
+            text-shadow: 
+                0 0 2px #ffffff,   /* White-hot center hint */
+                0 0 5px #ff4500;   /* Orange-red heat aura */
+        }
+
+        p { line-height: 1.8; font-size: 1.2em; margin-bottom: 30px; font-weight: bold; }
+        
+        .choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 40px;
+            align-items: center;
+        }
+
+        button.choice-btn {
+            padding: 15px 25px;
+            width: 100%;
+            max-width: 450px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #0f0400; 
+            background-image: repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(0,0,0,0.8) 10px, rgba(0,0,0,0.8) 12px);
+            
+            /* UPDATED: Bright burning text for buttons */
+            color: #ff9900; 
+            border: 2px solid #2a0a00; 
+            border-radius: 4px;
+            transition: all 0.1s ease;
+            text-align: left;
+            /* Subtle glow for idle state */
+            text-shadow: 0 0 3px #ff3300;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button.choice-btn:hover { 
+            background-color: #330500; 
+            border-color: #ff4500; 
+            color: #ffeb3b; /* Gets brighter (yellow) on hover */
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.6), inset 0 0 10px rgba(255, 100, 0, 0.4);
+            text-shadow: 0 0 8px #ff4500, 0 0 2px #ffffff;
+        }
+
+        #ui-layer {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            text-align: center;
+            pointer-events: none;
+            width: 70%; /* Wider for 10 icons */
+            max-width: 600px;
+            opacity: 0.9;
+        }
+
+        #status-text {
+            color: #331100; 
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 8px;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+
+        #energy-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(0,0,0,0.5);
+        }
+
+        #energy-fill {
+            width: 0%; 
+            height: 100%;
+            background: linear-gradient(90deg, #ff4500, #ffcc00);
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.8);
+            transition: width 0.1s linear;
+        }
+
+        #collection-hud {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap; /* Allow wrapping if small screen */
+        }
+        
+        .wisp-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #553322;
+            background: #221100;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 5px #000;
+        }
+        
+        .wisp-icon.collected {
+            border-color: #fff;
+            box-shadow: 0 0 8px currentColor, inset 0 0 0 transparent;
+        }
+
+        #fog-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            pointer-events: none; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- The Content Layer -->
+        <div id="content-layer">
+            <p>
+                In order to facilitate our research on decision making, we are interested in knowing 
+                certain factors about you. Specifically, we are interested in whether you actually 
+                take the time to read the instructions.
+            </p>
+            <p>
+                To demonstrate that you have read the instructions, please ignore the question below 
+                about your sports preferences. Instead, simply click on the option labeled "Skiing" 
+                to proceed.
+            </p>
+            <p><strong>Question: Which of these activities do you enjoy most?</strong></p>
+
+            <div class="choices-container">
+                <button class="choice-btn" id="btn-1" onclick="alert('Fail: You clicked Football.')">A. Football</button>
+                <button class="choice-btn" id="btn-2" onclick="alert('Fail: You clicked Basketball.')">B. Basketball</button>
+                <button class="choice-btn" id="btn-3" onclick="alert('Success! You followed the attention check.')">C. Skiing</button>
+                <button class="choice-btn" id="btn-4" onclick="alert('Fail: You clicked Tennis.')">D. Tennis</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="status-text">Collect 10 Essence Types</div>
+        <div id="energy-bar-bg">
+            <div id="energy-fill"></div>
+        </div>
+        <div id="collection-hud">
+            <!-- 10 Icons generated dynamically or hardcoded -->
+            <div id="icon-0" class="wisp-icon"></div>
+            <div id="icon-1" class="wisp-icon"></div>
+            <div id="icon-2" class="wisp-icon"></div>
+            <div id="icon-3" class="wisp-icon"></div>
+            <div id="icon-4" class="wisp-icon"></div>
+            <div id="icon-5" class="wisp-icon"></div>
+            <div id="icon-6" class="wisp-icon"></div>
+            <div id="icon-7" class="wisp-icon"></div>
+            <div id="icon-8" class="wisp-icon"></div>
+            <div id="icon-9" class="wisp-icon"></div>
+        </div>
+    </div>
+
+    <canvas id="fog-canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fog-canvas');
+        const ctx = canvas.getContext('2d');
+        const energyFill = document.getElementById('energy-fill');
+        const statusText = document.getElementById('status-text');
+        const icons = [];
+        for(let i=0; i<10; i++) icons.push(document.getElementById(`icon-${i}`));
+        
+        let gameState = 'COLLECTING'; 
+        let currentEnergy = 0; 
+        const MAX_ENERGY = 100;
+        const ENERGY_GAIN = 5; 
+        const ENERGY_DRAIN = 0.05; 
+        
+        let collectedTypes = new Set();
+        
+        // 10 WISP TYPES
+        // mouseForce: -1 (Flee), 1 (Attract)
+        // peerForce: -1 (Repel/Loner), 1 (Attract/Swarm)
+        // lightning: Probability of shooting lightning (0.0 to 1.0)
+        const WISP_TYPES = [
+            { color: '#ff0000', speed: 4.5, size: 3, mouseForce: -0.5, peerForce: -0.2, lightning: 0.01, jitter: 0.2 }, // Red: Aggressive Flee
+            { color: '#d400ff', speed: 3.5, size: 4, mouseForce: 0.3, peerForce: 0.5, lightning: 0.05, jitter: 0.4 },   // Purple: Curious Swarmer
+            { color: '#ff8800', speed: 1.5, size: 7, mouseForce: 0.0, peerForce: -0.8, lightning: 0.0, jitter: 0.05 },  // Orange: Loner Giant
+            { color: '#ffff00', speed: 7.0, size: 2, mouseForce: -0.8, peerForce: 0.0, lightning: 0.1, jitter: 0.9 },   // Yellow: Hyper Flee
+            { color: '#00ffff', speed: 5.0, size: 3, mouseForce: 0.6, peerForce: 0.0, lightning: 0.2, jitter: 0.6 },    // Cyan: Electric Attractor
+            { color: '#00ff00', speed: 2.0, size: 5, mouseForce: -0.2, peerForce: 0.4, lightning: 0.02, jitter: 0.1 },  // Green: Toxic Cloud
+            { color: '#ffffff', speed: 1.0, size: 2, mouseForce: 0.0, peerForce: -0.1, lightning: 0.0, jitter: 0.1 },   // White: Ghost
+            { color: '#ff0088', speed: 4.0, size: 3, mouseForce: 0.8, peerForce: 0.8, lightning: 0.05, jitter: 0.3 },   // Pink: Love Bug (Attracts All)
+            { color: '#4444ff', speed: 3.0, size: 4, mouseForce: -0.4, peerForce: 0.0, lightning: 0.3, jitter: 0.2 },   // Blue: Storm Generator
+            { color: '#88ff88', speed: 6.0, size: 1, mouseForce: 0.0, peerForce: -1.0, lightning: 0.01, jitter: 1.0 }   // Lime: Chaotic
+        ];
+
+        const NUM_WISPS = 120;     
+        const SUCTION_RADIUS = 100;
+        const CAPTURE_RADIUS = 30;
+        const LIGHTNING_RANGE = 100;
+
+        // RENDER SURFACES
+        const paperCanvas = document.createElement('canvas');
+        const pCtx = paperCanvas.getContext('2d');
+
+        const maskCanvas = document.createElement('canvas');
+        const mCtx = maskCanvas.getContext('2d');
+
+        const burnSimCanvas = document.createElement('canvas');
+        const bsCtx = burnSimCanvas.getContext('2d', { willReadFrequently: true });
+        
+        const fractalCanvas = document.createElement('canvas');
+        const fCtx = fractalCanvas.getContext('2d');
+
+        const heatVisCanvas = document.createElement('canvas');
+        const hvCtx = heatVisCanvas.getContext('2d');
+
+        let burnSimData;
+        let heatVisData;
+        let fractalData;
+        
+        // Flammability Mask (For Buttons)
+        let flammabilityMap = null; 
+
+        let width = 0, height = 0;
+        let simWidth = 0, simHeight = 0;
+        let mouseX = -1000, mouseY = -1000;
+        let wisps = [];
+        let collectedWisps = []; 
+        let shards = []; 
+        let fireParticles = []; 
+        let lightnings = []; // Transient lightning effects
+
+        // --- FRACTAL GENERATOR ---
+        function generateFractalTexture() {
+            if (simWidth <= 0 || simHeight <= 0) return;
+            fractalCanvas.width = simWidth;
+            fractalCanvas.height = simHeight;
+            
+            fCtx.fillStyle = '#000';
+            fCtx.fillRect(0,0,simWidth,simHeight);
+            
+            const idata = fCtx.createImageData(simWidth, simHeight);
+            const d = idata.data;
+            
+            for(let y=0; y<simHeight; y++) {
+                for(let x=0; x<simWidth; x++) {
+                    const idx = (y * simWidth + x) * 4;
+                    let val = (x & y);
+                    let noise = Math.random() * 50;
+                    let pattern = (val + noise) % 255;
+                    if ((x+y) % 100 > 50) pattern = 255 - pattern;
+                    d[idx] = pattern; d[idx+1] = pattern; d[idx+2] = pattern; d[idx+3] = 255; 
+                }
+            }
+            fCtx.putImageData(idata, 0, 0);
+            fractalData = fCtx.getImageData(0,0,simWidth,simHeight).data;
+        }
+
+        // --- MAP FLAMMABLE ZONES (Buttons) ---
+        function mapFlammability() {
+            if (simWidth <= 0) return;
+            // Create a Uint8Array map: 0 = normal, 1 = flammable (buttons)
+            flammabilityMap = new Uint8Array(simWidth * simHeight);
+            
+            // Get all buttons
+            const btns = document.querySelectorAll('.choice-btn');
+            btns.forEach(btn => {
+                const rect = btn.getBoundingClientRect();
+                
+                // Convert screen rect to Simulation coordinates (div 4)
+                const startX = Math.floor(rect.left / 4);
+                const startY = Math.floor(rect.top / 4);
+                const endX = Math.floor(rect.right / 4);
+                const endY = Math.floor(rect.bottom / 4);
+                
+                for(let y = startY; y < endY; y++) {
+                    for(let x = startX; x < endX; x++) {
+                        if(x >= 0 && x < simWidth && y >= 0 && y < simHeight) {
+                            flammabilityMap[y * simWidth + x] = 1; // Mark as highly flammable
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- PAPER TEXTURE ---
+        function generatePaperTexture() {
+            if (!width || width <= 0) return;
+            try {
+                paperCanvas.width = width;
+                paperCanvas.height = height;
+                const scale = 4;
+                const w = Math.max(1, Math.ceil(width / scale));
+                const h = Math.max(1, Math.ceil(height / scale));
+                const tempC = document.createElement('canvas');
+                tempC.width = w; tempC.height = h;
+                const tempCtx = tempC.getContext('2d');
+                const imgData = tempCtx.createImageData(w, h);
+                const data = imgData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const noise = (Math.random() - 0.5) * 30; 
+                    data[i] = 221 + noise;     
+                    data[i+1] = 204 + noise;   
+                    data[i+2] = 187 + noise;   
+                    data[i+3] = 255; 
+                }
+                tempCtx.putImageData(imgData, 0, 0);
+                pCtx.drawImage(tempC, 0, 0, w, h, 0, 0, width, height);
+                
+                const grad = pCtx.createRadialGradient(width/2, height/2, height/3, width/2, height/2, height);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(1, 'rgba(60,40,20,0.6)'); 
+                pCtx.fillStyle = grad;
+                pCtx.fillRect(0,0,width,height);
+
+            } catch (e) { console.error(e); }
+        }
+
+        function resize() {
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            if (!w || w === 0) w = 800; 
+            if (!h || h === 0) h = 600;
+
+            width = w;
+            height = h;
+
+            canvas.width = width;
+            canvas.height = height;
+            maskCanvas.width = width;
+            maskCanvas.height = height;
+            
+            simWidth = Math.max(1, Math.ceil(width / 4)); 
+            simHeight = Math.max(1, Math.ceil(height / 4));
+            
+            burnSimCanvas.width = simWidth;
+            burnSimCanvas.height = simHeight;
+            heatVisCanvas.width = simWidth;
+            heatVisCanvas.height = simHeight;
+            
+            bsCtx.clearRect(0, 0, simWidth, simHeight);
+            burnSimData = bsCtx.getImageData(0, 0, simWidth, simHeight);
+            heatVisData = hvCtx.createImageData(simWidth, simHeight);
+
+            generatePaperTexture();
+            generateFractalTexture();
+            
+            // Re-map buttons to simulation grid on resize
+            // Timeout allows DOM to settle
+            setTimeout(mapFlammability, 100);
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        window.addEventListener('resize', resize);
+        
+        resize();
+        
+        for(let i=0; i<NUM_WISPS; i++) respawnWisp(i, true);
+
+        function respawnWisp(index, randomPos = false) {
+            const typeIdx = (index % 10); 
+            const stats = WISP_TYPES[typeIdx];
+            const sizeVar = stats.size * (0.5 + Math.random());
+            const speedVar = stats.speed * (0.8 + Math.random() * 0.4);
+            const spawnWidth = width > 0 ? width : 800;
+            const spawnHeight = height > 0 ? height : 600;
+
+            wisps[index] = {
+                type: typeIdx, 
+                ...stats,
+                speed: speedVar, 
+                size: sizeVar,
+                x: randomPos ? Math.random() * spawnWidth : (Math.random() > 0.5 ? -10 : spawnWidth + 10),
+                y: Math.random() * spawnHeight,
+                vx: (Math.random() - 0.5) * speedVar, 
+                vy: (Math.random() - 0.5) * speedVar,
+                phase: Math.random() * Math.PI * 2
+            };
+        }
+
+        function updateHUD() {
+            collectedTypes.forEach(type => {
+                if (icons[type]) {
+                    icons[type].classList.add('collected');
+                    icons[type].style.backgroundColor = WISP_TYPES[type].color;
+                }
+            });
+        }
+
+        function triggerBreak() {
+            gameState = 'BREAKING';
+            statusText.innerText = "PAPER IGNITION";
+            statusText.style.color = "#ff4500";
+            for(let i=0; i<30; i++) {
+                shards.push({
+                    x: mouseX, y: mouseY,
+                    vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20,
+                    rot: Math.random() * Math.PI, rotSpeed: (Math.random() - 0.5) * 0.5, life: 1.0
+                });
+            }
+            collectedWisps = [];
+            setTimeout(() => {
+                gameState = 'BURNING';
+                statusText.innerText = "BURN THE VEIL";
+                energyFill.style.background = "linear-gradient(90deg, #ffff00, #ff4500)";
+            }, 500);
+        }
+
+        function drawJar(x, y) {
+            ctx.save(); ctx.translate(x, y);
+            if (currentEnergy > 80) ctx.translate((Math.random()-0.5)*3, (Math.random()-0.5)*3);
+            
+            ctx.fillStyle = 'rgba(255, 240, 200, 0.15)'; 
+            ctx.beginPath(); ctx.roundRect(-25, -35, 50, 70, 10); ctx.fill();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + (currentEnergy/200)})`;
+            ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-25, -35, 50, 70, 10); ctx.stroke();
+            if (currentEnergy > 0) {
+                const h = (currentEnergy / MAX_ENERGY) * 65;
+                ctx.fillStyle = 'rgba(255, 200, 100, 0.3)'; 
+                ctx.beginPath(); ctx.rect(-23, 33 - h, 46, h); ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function spawnFireParticle(x, y) {
+            fireParticles.push({
+                x: x + (Math.random() - 0.5) * 25, y: y + (Math.random() - 0.5) * 25,
+                vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 3 - 1, 
+                size: Math.random() * 8 + 4, life: 1.0, colorType: Math.random()
+            });
+        }
+
+        function updateBurn() {
+            if (!burnSimData || !heatVisData || !fractalData) return;
+            
+            const data = burnSimData.data;      
+            const visData = heatVisData.data;   
+            const fData = fractalData;          
+            const w = simWidth;
+            const h = simHeight;
+
+            // 1. Ignite 
+            if (gameState === 'BURNING') {
+                const mx = Math.floor(mouseX / 4); 
+                const my = Math.floor(mouseY / 4);
+                const radius = 12; 
+                
+                for (let y = my - radius; y <= my + radius; y++) {
+                    for (let x = mx - radius; x <= mx + radius; x++) {
+                        if (x >= 0 && x < w && y >= 0 && y < h) {
+                            const idx = (y * w + x) * 4;
+                            const dx = x - mx; const dy = y - my;
+                            const distSq = dx*dx + dy*dy;
+                            if (distSq <= radius*radius) {
+                                if (data[idx] < 255) { 
+                                    data[idx + 1] = Math.min(255, data[idx+1] + 50 + Math.random() * 50); 
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Physics Loop with Flammability
+            for (let i = 0; i < data.length; i += 4) {
+                let burn = data[i];
+                let heat = data[i+1];
+                let fractalVal = fData[i]; 
+                
+                // Get flammability at this pixel
+                let pixelIdx = i / 4;
+                let isFlammable = flammabilityMap ? flammabilityMap[pixelIdx] : 0;
+
+                if (heat > 10) {
+                    let burnRate = Math.floor(heat / 10);
+                    
+                    // FLAMMABILITY LOGIC:
+                    // If area is flammable (Button), it burns faster and retains heat longer
+                    if (isFlammable) {
+                        burnRate += 2; // Burn fast
+                        heat = Math.max(0, heat - 0.5 - Math.random()*0.5); // Cool VERY slow (sustains fire)
+                    } else {
+                        heat = Math.max(0, heat - 1.5 - Math.random()); // Normal cool
+                    }
+                    
+                    burn = Math.min(255, burn + burnRate);
+                    
+                    // SPREAD LOGIC
+                    // Flammable areas spread aggressively (0.9 chance)
+                    // Normal paper spreads slowly (0.1 chance)
+                    let spreadChance = isFlammable ? 0.9 : 0.1;
+                    
+                    if (heat > 50 && Math.random() < spreadChance) {
+                        const offset = (Math.floor(Math.random() * 3) - 1) * 4 + (Math.floor(Math.random() * 3) - 1) * w * 4;
+                        if (i + offset >= 0 && i + offset < data.length) {
+                             data[i + offset + 1] = Math.min(255, data[i + offset + 1] + 20);
+                        }
+                    }
+                }
+
+                data[i] = burn;
+                data[i+1] = heat;
+                
+                if (burn > fractalVal) {
+                    data[i+3] = 255; 
+                } else {
+                    data[i+3] = 0;   
+                }
+
+                if (burn > 0 && burn < 255) {
+                    let diff = fractalVal - burn; 
+                    
+                    if (heat > 180) { 
+                        visData[i] = 255; visData[i+1] = 255; visData[i+2] = 200; 
+                        visData[i+3] = 255;
+                    } else if (heat > 100) { 
+                        visData[i] = 255; visData[i+1] = 220; visData[i+2] = 50; 
+                        visData[i+3] = 240;
+                    } else if (heat > 50) { 
+                        visData[i] = 255; visData[i+1] = 100; visData[i+2] = 0; 
+                        visData[i+3] = 220;
+                    } else if (diff < 50 && diff > 0) { 
+                        visData[i] = 180; visData[i+1] = 20; visData[i+2] = 0; 
+                        visData[i+3] = 180;
+                    } else {
+                        visData[i] = 50; visData[i+1] = 30; visData[i+2] = 20;
+                        visData[i+3] = 200; 
+                    }
+                } else {
+                    visData[i+3] = 0; 
+                }
+            }
+            
+            bsCtx.putImageData(burnSimData, 0, 0);
+            hvCtx.putImageData(heatVisData, 0, 0);
+
+            mCtx.globalCompositeOperation = 'source-over';
+            mCtx.imageSmoothingEnabled = false; 
+            mCtx.drawImage(burnSimCanvas, 0, 0, width, height);
+        }
+
+        // --- UPDATE LOOP ---
+        function update() {
+            if (width <= 0) return;
+            
+            // Clear transient lightning array
+            lightnings = [];
+
+            // --- COMPLEX WISP LOGIC ---
+            wisps.forEach((w, i) => {
+                // 1. RANDOMNESS
+                w.vx += (Math.random() - 0.5) * w.jitter; 
+                w.vy += (Math.random() - 0.5) * w.jitter;
+                
+                // 2. MOUSE INTERACTION (Attract/Repel)
+                const dx = mouseX - w.x;
+                const dy = mouseY - w.y;
+                const distToMouse = Math.hypot(dx, dy);
+                
+                // Only react if somewhat close
+                if (distToMouse < 400) {
+                    if (gameState === 'COLLECTING') {
+                        // Apply specific force
+                        // w.mouseForce > 0 = attract, < 0 = repel
+                        w.vx += (dx/distToMouse) * w.mouseForce * 0.2;
+                        w.vy += (dy/distToMouse) * w.mouseForce * 0.2;
+                        
+                        // SUCTION (Global mechanic overrides for capture)
+                        if (distToMouse < SUCTION_RADIUS) {
+                            w.vx += (dx/distToMouse) * 1.5; 
+                            w.vy += (dy/distToMouse) * 1.5;
+                        }
+                    } else if (gameState === 'BURNING') {
+                        // All flee fire
+                        if (distToMouse < 200) {
+                            w.vx -= (dx/distToMouse) * 0.5;
+                            w.vy -= (dy/distToMouse) * 0.5;
+                        }
+                    }
+                }
+
+                // 3. PEER INTERACTION (Swarm/Repel) & LIGHTNING
+                // O(N^2) loop, acceptable for N=120
+                // Optimization: Only check a few neighbors or use probability to skip
+                if (Math.random() < 0.2) { // Only check 20% of frames to save CPU
+                    wisps.forEach((other, j) => {
+                        if (i === j) return;
+                        const pdx = other.x - w.x;
+                        const pdy = other.y - w.y;
+                        const pdist = Math.hypot(pdx, pdy);
+                        
+                        if (pdist < 100) {
+                            // Apply force
+                            w.vx += (pdx/pdist) * w.peerForce * 0.05;
+                            w.vy += (pdy/pdist) * w.peerForce * 0.05;
+                            
+                            // LIGHTNING LOGIC
+                            // If close, random chance based on type stat
+                            if (pdist < LIGHTNING_RANGE && Math.random() < w.lightning) {
+                                lightnings.push({
+                                    x1: w.x, y1: w.y,
+                                    x2: other.x, y2: other.y,
+                                    color: w.color
+                                });
+                            }
+                        }
+                    });
+                }
+
+                // Speed Cap & Move
+                const s = Math.hypot(w.vx, w.vy);
+                if (s > w.speed) { w.vx = (w.vx/s) * w.speed; w.vy = (w.vy/s) * w.speed; }
+                w.x += w.vx; w.y += w.vy;
+                
+                // Bounds
+                if (w.x < -20) w.x = width + 20; if (w.x > width + 20) w.x = -20;
+                if (w.y < -20) w.y = height + 20; if (w.y > height + 20) w.y = -20;
+
+                // Capture
+                if (gameState === 'COLLECTING' && distToMouse < CAPTURE_RADIUS) {
+                    currentEnergy += ENERGY_GAIN;
+                    collectedTypes.add(w.type);
+                    updateHUD();
+                    collectedWisps.push({ angle: Math.random() * Math.PI * 2, radius: Math.random() * 20, yOff: (Math.random()-0.5) * 40, color: w.color });
+                    respawnWisp(i);
+                    if (currentEnergy >= MAX_ENERGY) {
+                        currentEnergy = MAX_ENERGY;
+                        if (collectedTypes.size >= 10) triggerBreak();
+                        else { statusText.innerText = "Need All 10 Types!"; statusText.style.color = "#ff0000"; }
+                    }
+                }
+            });
+
+            if (gameState === 'COLLECTING') {
+                energyFill.style.width = currentEnergy + "%";
+                for (let i = collectedWisps.length - 1; i >= 0; i--) {
+                    let cw = collectedWisps[i];
+                    cw.angle += 0.1; cw.radius *= 0.99; if (cw.radius < 2) cw.radius = 2;
+                }
+            } else if (gameState === 'BREAKING') {
+                shards.forEach(s => {
+                    s.x += s.vx; s.y += s.vy; s.rot += s.rotSpeed; s.life -= 0.05;
+                });
+            } else if (gameState === 'BURNING') {
+                currentEnergy -= ENERGY_DRAIN;
+                energyFill.style.width = currentEnergy + "%";
+                if (currentEnergy <= 0) {
+                    gameState = 'COLLECTING';
+                    statusText.innerText = "Collect Essence";
+                    statusText.style.color = "#331100";
+                    energyFill.style.background = "linear-gradient(90deg, #ff4500, #ffcc00)";
+                    collectedTypes.clear();
+                    icons.forEach(icon => { icon.classList.remove('collected'); icon.style.backgroundColor = '#221100'; });
+                }
+                spawnFireParticle(mouseX, mouseY);
+            }
+
+            for (let i = fireParticles.length - 1; i >= 0; i--) {
+                let p = fireParticles[i];
+                p.x += p.vx; p.y += p.vy; p.size *= 0.95; p.life -= 0.03;
+                if (p.life <= 0) fireParticles.splice(i, 1);
+            }
+
+            updateBurn();
+        }
+
+        // --- DRAW LOOP ---
+        function animate() {
+            if (width <= 0) resize();
+            if (width > 0) {
+                update();
+                
+                // 1. PAPER
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(paperCanvas, 0, 0);
+
+                // 2. BURN MASK
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.imageSmoothingEnabled = false; 
+                ctx.drawImage(burnSimCanvas, 0, 0, width, height);
+
+                // 3. FIRE VISUALS
+                ctx.globalCompositeOperation = 'source-over'; 
+                ctx.drawImage(heatVisCanvas, 0, 0, width, height);
+                ctx.imageSmoothingEnabled = true;
+
+                // 4. PARTICLES
+                fireParticles.forEach(p => {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    if (p.colorType > 0.7) ctx.fillStyle = `rgba(255, 255, 200, ${p.life})`;
+                    else if (p.colorType > 0.4) ctx.fillStyle = `rgba(255, 200, 50, ${p.life})`;
+                    else ctx.fillStyle = `rgba(200, 50, 0, ${p.life})`;
+                    ctx.fill();
+                });
+
+                if (gameState === 'COLLECTING') {
+                    // Wisps
+                    ctx.shadowBlur = 8;
+                    wisps.forEach(w => {
+                        const flicker = Math.sin(Date.now() * 0.01 + w.phase);
+                        ctx.fillStyle = w.color; ctx.shadowColor = w.color;
+                        ctx.globalAlpha = 0.6 + flicker * 0.3;
+                        ctx.beginPath(); ctx.arc(w.x, w.y, w.size, 0, Math.PI * 2); ctx.fill();
+                    });
+                    
+                    // Lightning
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#fff';
+                    ctx.lineWidth = 1;
+                    lightnings.forEach(l => {
+                        ctx.strokeStyle = l.color;
+                        ctx.globalAlpha = 0.7; // Transient flash
+                        ctx.beginPath();
+                        ctx.moveTo(l.x1, l.y1);
+                        // Simple jagged line
+                        const midX = (l.x1 + l.x2)/2 + (Math.random()-0.5)*20;
+                        const midY = (l.y1 + l.y2)/2 + (Math.random()-0.5)*20;
+                        ctx.lineTo(midX, midY);
+                        ctx.lineTo(l.x2, l.y2);
+                        ctx.stroke();
+                    });
+
+                    ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+                    drawJar(mouseX, mouseY);
+                    collectedWisps.forEach(cw => {
+                        const cx = mouseX + Math.cos(cw.angle) * cw.radius;
+                        const cy = mouseY + Math.sin(cw.angle) * (cw.radius*0.3) + cw.yOff;
+                        ctx.fillStyle = cw.color; ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI*2); ctx.fill();
+                    });
+                } else if (gameState === 'BURNING') {
+                    wisps.forEach(w => {
+                        ctx.fillStyle = w.color; ctx.globalAlpha = 0.3;
+                        ctx.beginPath(); ctx.arc(w.x, w.y, w.size, 0, Math.PI * 2); ctx.fill();
+                    });
+                    ctx.globalAlpha = 1.0;
+                }
+
+                if (shards.length > 0) {
+                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    shards.forEach(s => {
+                        if(s.life <= 0) return;
+                        ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.rot);
+                        ctx.globalAlpha = s.life; ctx.beginPath();
+                        ctx.moveTo(-5, -5); ctx.lineTo(5, -5); ctx.lineTo(0, 10);
+                        ctx.fill(); ctx.restore();
+                    });
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>
