@@ -385,15 +385,18 @@ window.onload = function() {
     { label: "E", text: "To ensure the survey software is functioning correctly" }
   ];
 
+  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const MIN_FONT = 3, MAX_FONT = 17, MAX_FONT_C = 16;
-  const WATER_RADIUS = 70, GROW_PER_WATER = 7, DRIP_INTERVAL_MS = 55;
+  const WATER_RADIUS = isMobile ? 90 : 70;
+  const GROW_PER_WATER = isMobile ? 12 : 10;
+  const DRIP_INTERVAL_MS = isMobile ? 45 : 50;
   const SPOUT_OFFSET_X = -49, SPOUT_OFFSET_Y = 27;
   const SPRAY_FALL_MIN = 30, SPRAY_FALL_MAX = 60, SPRAY_CONE_HALF = 28, RAIN_COUNT = 8;
 
   // Decoration thresholds — letters sprout EARLY and keep blooming
   const SPROUT_AT = 12;     // growth level to start sprouting
-  const BLOOM_START = 40;   // first flowers
-  const BLOOM_INTERVAL = 25; // new flower every +25 growth
+  const BLOOM_START = isMobile ? 55 : 40;   // first flowers
+  const BLOOM_INTERVAL = isMobile ? 40 : 25; // new flower every N growth
 
   let allChars = [];
   let selected = null;
@@ -403,7 +406,7 @@ window.onload = function() {
   let dripTimer = null;
   let totalWaterEvents = 0;
   let ambientPlantCount = 0;
-  const MAX_AMBIENT_PLANTS = 40;
+  const MAX_AMBIENT_PLANTS = isMobile ? 15 : 40;
   let butterflyCount = 0, birdCount = 0;
   const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -666,9 +669,11 @@ window.onload = function() {
       if (totalWaterEvents % t === 0) spawnAmbientPlant();
     }
     // Butterflies: max 5, start at 10 events
-    if (butterflyCount < 5 && totalWaterEvents > 10 && totalWaterEvents % 18 === 0) spawnButterfly();
+    const maxButterflies = isMobile ? 2 : 5;
+    if (butterflyCount < maxButterflies && totalWaterEvents > 10 && totalWaterEvents % 18 === 0) spawnButterfly();
     // Birds: LOTS — max 12, start at 5 events, every 8 events
-    if (birdCount < 12 && totalWaterEvents > 5 && totalWaterEvents % 8 === 0) spawnBird();
+    const maxBirds = isMobile ? 4 : 12;
+    if (birdCount < maxBirds && totalWaterEvents > 5 && totalWaterEvents % 8 === 0) spawnBird();
   }
 
   function spawnAmbientPlant() {
