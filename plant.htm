@@ -789,12 +789,15 @@ window.onload = function() {
 
   function onTS(e) {
     if (!toolActive) return;
+    // Don't block taps on the tool button (so user can put it down)
+    if (e.target.closest('#tool-btn')) return;
     e.preventDefault(); mouseInside=true;
     curMouseX=e.touches[0].clientX; curMouseY=e.touches[0].clientY;
     startDripTimer(); doDrip(curMouseX,curMouseY);
   }
   function onTM(e) {
     if (!toolActive) return;
+    if (e.target.closest('#tool-btn')) return;
     e.preventDefault(); curMouseX=e.touches[0].clientX; curMouseY=e.touches[0].clientY; mouseInside=true;
   }
 
