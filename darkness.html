@@ -17,6 +17,7 @@
             height: 100vh;
             color: #333;
             cursor: none;
+            touch-action: none;
         }
 
         #game-container {
@@ -154,8 +155,9 @@
 
         let flashAlpha = 0;
 
-        const FLY_SPEED = 4;
-        const FLEE_RADIUS = 200;
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const FLY_SPEED = isMobile ? 3 : 4;
+        const FLEE_RADIUS = isMobile ? 120 : 200;
         const WANDER_STRENGTH = 0.5;
 
         // Lantern Glow
@@ -185,6 +187,19 @@
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            mouseX = t.clientX;
+            mouseY = t.clientY;
+        }, { passive: false });
+
+        window.addEventListener('touchstart', (e) => {
+            const t = e.touches[0];
+            mouseX = t.clientX;
+            mouseY = t.clientY;
         });
 
         window.addEventListener('resize', resize);
@@ -220,7 +235,8 @@
             if (fly.y < 50) fly.vy = Math.abs(fly.vy);
             if (fly.y > height - 50) fly.vy = -Math.abs(fly.vy);
 
-            if (dist < 60) {
+            const catchRadius = isMobile ? 100 : 60;
+            if (dist < catchRadius) {
                 energy += CHARGE_RATE;
                 if (energy >= ENERGY_MAX) {
                     energy = ENERGY_MAX;

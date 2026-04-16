@@ -43,7 +43,11 @@
     overflow: hidden;
   }
 
-  @media (max-width: 600px) { #survey-container { padding: 28px 20px; } }
+  @media (max-width: 600px) {
+    #survey-container { padding: 24px 16px; min-height: auto; }
+    .tz p { font-size: 16px; line-height: 1.45; }
+    .rx { padding: 10px 14px; font-size: 14px; }
+  }
 
   #survey-container::before {
     content: '';

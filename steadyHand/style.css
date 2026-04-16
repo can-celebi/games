@@ -167,3 +167,17 @@ canvas.is-grabbing { cursor: grabbing; }
         width: 200px;
     }
 }
+
+@media (max-width: 480px) {
+    .modal-content {
+        padding: 18px 14px;
+        border-radius: 10px;
+    }
+    .modal-content h3 { font-size: 1.1rem; }
+    .instruction-grid { gap: 14px; margin: 16px 0; }
+    .step img { max-width: 120px; padding: 6px; }
+    .step p { font-size: 0.85rem; }
+    .btn-primary { padding: 10px 28px; font-size: 1rem; }
+    #status { font-size: 1rem; }
+    h2 { font-size: 1.15rem; }
+}

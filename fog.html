@@ -135,6 +135,8 @@
       resizeCanvas();
       window.addEventListener('resize', resizeCanvas);
 
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
       container.addEventListener('pointermove', (e) => {
         const rect = container.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
@@ -142,8 +144,29 @@
         hasMouse = true;
       });
 
-      container.addEventListener('pointerleave', () => {
+      container.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const rect = container.getBoundingClientRect();
+        const t = e.touches[0];
+        mouseX = t.clientX - rect.left;
+        mouseY = t.clientY - rect.top;
+        hasMouse = true;
+      }, { passive: false });
+
+      container.addEventListener('touchstart', (e) => {
+        const rect = container.getBoundingClientRect();
+        const t = e.touches[0];
+        mouseX = t.clientX - rect.left;
+        mouseY = t.clientY - rect.top;
+        hasMouse = true;
+      });
+
+      container.addEventListener('touchend', () => {
         hasMouse = false;
+      });
+
+      container.addEventListener('pointerleave', () => {
+        if (!isMobile) hasMouse = false;
       });
 
       function animate() {
@@ -151,7 +174,7 @@
         if (!width || !height) return;
 
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 0.25; // thicker + faster-closing fog
+        ctx.globalAlpha = isMobile ? 0.15 : 0.25; // thinner fog on mobile
         ctx.fillStyle = 'rgba(0, 0, 0, 1)';
         ctx.fillRect(0, 0, width, height);
         ctx.globalAlpha = 1;
@@ -159,7 +182,7 @@
         if (hasMouse) {
           ctx.globalCompositeOperation = 'destination-out';
 
-          const baseRadius = 70;
+          const baseRadius = isMobile ? 110 : 70; // larger reveal on mobile
           const jitter = 4 * (Math.random() - 0.5);
           const radius = baseRadius + jitter;
 
