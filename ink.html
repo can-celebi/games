@@ -377,8 +377,9 @@ window.onload = function() {
     { label: "E", text: "To ensure the survey software is functioning correctly" }
   ];
 
-  const INK_DROP_RADIUS = 5;
-  const REVEAL_RADIUS = 15;
+  const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const INK_DROP_RADIUS = isMobile ? 8 : 5;
+  const REVEAL_RADIUS = isMobile ? 35 : 25;
   const DISSIPATION_DURATION = 200;
   const DRIP_INTERVAL = 20;
   const DRIP_MOVE_THRESHOLD = 5;
