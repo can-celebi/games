@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Results</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+  h1 { text-align: center; font-size: 2rem; margin-bottom: 1.5rem; color: #fff; }
+  .tabs {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin-bottom: 2rem;
+  }
+  .tab {
+    padding: 8px 18px; border-radius: 20px; border: 1px solid #2a2a3a;
+    background: #1a1a2e; color: #aaa; cursor: pointer; font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .tab:hover { border-color: #4a4a6a; color: #fff; }
+  .tab.active { background: #4a9eff; border-color: #4a9eff; color: #fff; }
+  .container { max-width: 1000px; margin: 0 auto; }
+  .loading { text-align: center; color: #666; padding: 3rem; }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: #1a1a2e; border: 1px solid #2a2a3a; border-radius: 12px;
+    padding: 1.2rem; text-align: center;
+  }
+  .stat-card .value { font-size: 2rem; font-weight: 700; color: #4a9eff; }
+  .stat-card .label { font-size: 0.8rem; color: #888; margin-top: 4px; }
+
+  /* Heatmap */
+  .heatmap-section { margin-bottom: 2rem; }
+  .heatmap-section h3 { margin-bottom: 0.8rem; font-size: 1.1rem; color: #ccc; }
+  .heatmap-wrap {
+    position: relative; background: #111; border: 1px solid #2a2a3a;
+    border-radius: 8px; overflow: hidden;
+  }
+  canvas.heatmap { display: block; width: 100%; height: auto; }
+
+  /* Session list */
+  .sessions-section h3 { margin-bottom: 0.8rem; font-size: 1.1rem; color: #ccc; }
+  .session-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; background: #1a1a2e; border: 1px solid #2a2a3a;
+    border-radius: 8px; margin-bottom: 6px; font-size: 0.85rem;
+  }
+  .session-row .id { color: #4a9eff; font-family: monospace; }
+  .session-row .meta { color: #888; }
+  .session-row .result { font-weight: 600; }
+  .result-pass, .result-success, .result-win { color: #2ecc40; }
+  .result-fail, .result-failure { color: #ff4136; }
+
+  .back-link {
+    display: inline-block; margin-bottom: 1.5rem;
+    color: #4a9eff; text-decoration: none; font-size: 0.9rem;
+  }
+  .back-link:hover { text-decoration: underline; }
+
+  @media (max-width: 500px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.5rem; }
+    .stat-card .value { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="back-link">&larr; Back to Games</a>
+<h1>Results</h1>
+
+<div class="tabs" id="tabs"></div>
+<div class="container" id="content">
+  <div class="loading" id="loading">Loading data...</div>
+</div>
+
+<script>
+const GAMES = [
+  { key: 'steady_hand', name: 'Steady Hand' },
+  { key: 'catcher', name: 'Catcher' },
+  { key: 'pendulum', name: 'Pendulum' },
+  { key: 'chase_the_light', name: 'Chase the Light' },
+  { key: 'darkness', name: 'Darkness' },
+  { key: 'ink', name: 'Ink' },
+  { key: 'fire', name: 'Fire' },
+  { key: 'plant', name: 'Plant' }
+];
+
+const API = 'https://api.github.com/repos/can-celebi/games/contents/data';
+const _k = 'Z2l0aHViX3BhdF8xMUFOWkFDN1EwTnp4bWJWYVhqV3hTX3' +
+  'dOOUw3YllJcmZPc3RsbzlIaGFESkhYcXpKZUFVSzZhUUR4MG01UUlCZExKRFZDSlFBUHhvVU5MTkNt';
+const TOKEN = atob(_k);
+
+const allData = {};
+let currentGame = null;
+
+async function fetchGameData(key) {
+  try {
+    const resp = await fetch(`${API}/${key}.jsonl`, {
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return [];
+    const file = await resp.json();
+    const text = atob(file.content.replace(/\n/g, ''));
+    return text.trim().split('\n').filter(l => l).map(l => JSON.parse(l));
+  } catch (e) {
+    console.warn('Failed to load', key, e);
+    return [];
+  }
+}
+
+async function loadAll() {
+  const promises = GAMES.map(async g => {
+    allData[g.key] = await fetchGameData(g.key);
+  });
+  await Promise.all(promises);
+  document.getElementById('loading').style.display = 'none';
+  buildTabs();
+  // Show first game with data
+  const first = GAMES.find(g => allData[g.key].length > 0);
+  if (first) selectGame(first.key);
+}
+
+function buildTabs() {
+  const tabsEl = document.getElementById('tabs');
+  GAMES.forEach(g => {
+    const count = allData[g.key].length;
+    const btn = document.createElement('div');
+    btn.className = 'tab';
+    btn.textContent = `${g.name} (${count})`;
+    btn.onclick = () => selectGame(g.key);
+    btn.id = 'tab-' + g.key;
+    tabsEl.appendChild(btn);
+  });
+}
+
+function selectGame(key) {
+  currentGame = key;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById('tab-' + key);
+  if (tab) tab.classList.add('active');
+  renderGame(key);
+}
+
+function renderGame(key) {
+  const records = allData[key];
+  const container = document.getElementById('content');
+
+  if (!records.length) {
+    container.innerHTML = '<div class="loading">No data recorded yet.</div>';
+    return;
+  }
+
+  // Deduplicate: for records with same id, keep the one with highest save_number
+  const byId = {};
+  records.forEach(r => {
+    const id = r.id;
+    const sn = r.save_number || 0;
+    if (!byId[id] || sn > (byId[id].save_number || 0)) byId[id] = r;
+  });
+  const sessions = Object.values(byId);
+
+  // Stats
+  const durations = sessions.map(r => r.duration_ms / 1000);
+  const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+  const mobileCount = sessions.filter(r => r.is_mobile).length;
+
+  let statsHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="value">${sessions.length}</div><div class="label">Sessions</div></div>
+      <div class="stat-card"><div class="value">${avgDuration.toFixed(1)}s</div><div class="label">Avg Duration</div></div>
+      <div class="stat-card"><div class="value">${mobileCount}</div><div class="label">Mobile</div></div>
+      <div class="stat-card"><div class="value">${sessions.length - mobileCount}</div><div class="label">Desktop</div></div>
+  `;
+
+  // Game-specific stats
+  const results = sessions.map(r => r.result).filter(Boolean);
+  if (['steady_hand', 'catcher', 'pendulum'].includes(key)) {
+    const outcomes = results.map(r => r.outcome).filter(Boolean);
+    const passCount = outcomes.filter(o => o === 'pass' || o === 'success').length;
+    statsHTML += `<div class="stat-card"><div class="value">${passCount}/${outcomes.length}</div><div class="label">Pass Rate</div></div>`;
+
+    if (key === 'catcher') {
+      const scores = results.map(r => r.score).filter(s => s != null);
+      if (scores.length) {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Score</div></div>`;
+      }
+    }
+    if (key === 'steady_hand') {
+      const scores = results.map(r => r.score).filter(s => s != null);
+      if (scores.length) {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        statsHTML += `<div class="stat-card"><div class="value">${avg.toFixed(1)}</div><div class="label">Avg Lives Left</div></div>`;
+      }
+    }
+  }
+
+  if (['darkness', 'ink', 'fire', 'plant'].includes(key)) {
+    // Choice distribution
+    const choices = results.map(r => r.choice).filter(Boolean);
+    const choiceCounts = {};
+    choices.forEach(c => { choiceCounts[c] = (choiceCounts[c] || 0) + 1; });
+    const topChoice = Object.entries(choiceCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topChoice) {
+      statsHTML += `<div class="stat-card"><div class="value">${topChoice[0]}</div><div class="label">Most Chosen (${topChoice[1]}x)</div></div>`;
+    }
+  }
+
+  statsHTML += '</div>';
+
+  // Heatmap
+  const heatmapHTML = `
+    <div class="heatmap-section">
+      <h3>Mouse / Touch Heatmap (all sessions)</h3>
+      <div class="heatmap-wrap"><canvas class="heatmap" id="heatmap-canvas" width="960" height="540"></canvas></div>
+    </div>
+  `;
+
+  // Session list
+  let sessionsHTML = '<div class="sessions-section"><h3>Sessions</h3>';
+  sessions.sort((a, b) => b.duration_ms - a.duration_ms);
+  sessions.forEach(r => {
+    const outcome = r.result ? (r.result.outcome || r.result.choice || r.result.trigger || '') : '';
+    const cls = outcome ? 'result-' + outcome.toLowerCase() : '';
+    const mouseCount = r.mouse ? r.mouse.length : 0;
+    sessionsHTML += `
+      <div class="session-row">
+        <span class="id">${r.id.slice(0, 8)}</span>
+        <span class="meta">${(r.duration_ms / 1000).toFixed(1)}s · ${mouseCount} pts · ${r.is_mobile ? 'mobile' : 'desktop'}</span>
+        <span class="result ${cls}">${outcome || '—'}</span>
+      </div>`;
+  });
+  sessionsHTML += '</div>';
+
+  container.innerHTML = statsHTML + heatmapHTML + sessionsHTML;
+
+  // Draw heatmap
+  drawHeatmap(sessions);
+}
+
+function drawHeatmap(sessions) {
+  const canvas = document.getElementById('heatmap-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+
+  // Collect all mouse points, normalize to canvas coords
+  const allPoints = [];
+  sessions.forEach(s => {
+    if (!s.mouse || !s.screen) return;
+    const sx = W / s.screen.w;
+    const sy = H / s.screen.h;
+    s.mouse.forEach(p => {
+      allPoints.push({ x: p.x * sx, y: p.y * sy });
+    });
+  });
+
+  if (!allPoints.length) {
+    ctx.fillStyle = '#444';
+    ctx.font = '16px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('No mouse data', W / 2, H / 2);
+    return;
+  }
+
+  // Create intensity map
+  const gridSize = 8;
+  const cols = Math.ceil(W / gridSize);
+  const rows = Math.ceil(H / gridSize);
+  const grid = new Float32Array(cols * rows);
+
+  allPoints.forEach(p => {
+    const gx = Math.floor(p.x / gridSize);
+    const gy = Math.floor(p.y / gridSize);
+    // Gaussian spread
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = gx + dx;
+        const ny = gy + dy;
+        if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const weight = Math.exp(-dist * dist / 2);
+          grid[ny * cols + nx] += weight;
+        }
+      }
+    }
+  });
+
+  // Find max
+  let maxVal = 0;
+  for (let i = 0; i < grid.length; i++) if (grid[i] > maxVal) maxVal = grid[i];
+  if (maxVal === 0) maxVal = 1;
+
+  // Draw
+  const imgData = ctx.createImageData(W, H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const gx = Math.floor(x / gridSize);
+      const gy = Math.floor(y / gridSize);
+      const val = grid[gy * cols + gx] / maxVal;
+      const idx = (y * W + x) * 4;
+
+      // Color gradient: black -> blue -> cyan -> green -> yellow -> red
+      let r = 0, g = 0, b = 0;
+      if (val < 0.2) {
+        const t = val / 0.2;
+        b = Math.round(t * 180);
+      } else if (val < 0.4) {
+        const t = (val - 0.2) / 0.2;
+        b = Math.round(180 - t * 80);
+        g = Math.round(t * 200);
+      } else if (val < 0.6) {
+        const t = (val - 0.4) / 0.2;
+        g = Math.round(200 + t * 55);
+        r = Math.round(t * 200);
+        b = Math.round(100 - t * 100);
+      } else if (val < 0.8) {
+        const t = (val - 0.6) / 0.2;
+        r = Math.round(200 + t * 55);
+        g = Math.round(255 - t * 100);
+      } else {
+        const t = (val - 0.8) / 0.2;
+        r = 255;
+        g = Math.round(155 - t * 155);
+      }
+
+      imgData.data[idx] = r;
+      imgData.data[idx + 1] = g;
+      imgData.data[idx + 2] = b;
+      imgData.data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '12px system-ui';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${allPoints.length.toLocaleString()} points · ${sessions.length} sessions`, W - 10, H - 10);
+}
+
+loadAll();
+</script>
+</body>
+</html>

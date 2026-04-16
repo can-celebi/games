@@ -192,6 +192,7 @@
 
       if (putResp.ok) {
         console.log('[data-collector] Saved (#' + saveCount + ')');
+        showResultsButton();
         saving = false;
         return true;
       } else {
@@ -213,6 +214,23 @@
     }
     saving = false;
     return false;
+  }
+
+  var resultsShown = false;
+  function showResultsButton() {
+    if (resultsShown) return;
+    resultsShown = true;
+    var btn = document.createElement('a');
+    // Determine if we're in a subfolder
+    var isSubfolder = window.location.pathname.indexOf('/steadyHand/') >= 0 ||
+      window.location.pathname.indexOf('/catcher/') >= 0 ||
+      window.location.pathname.indexOf('/pendulum/') >= 0;
+    btn.href = isSubfolder ? '../results.html' : 'results.html';
+    btn.textContent = '📊 Results';
+    btn.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:9999;background:rgba(26,26,46,0.9);color:#4a9eff;text-decoration:none;padding:8px 18px;border-radius:20px;font:600 13px/1 system-ui,sans-serif;backdrop-filter:blur(4px);border:1px solid rgba(74,158,255,0.3);transition:all 0.2s;';
+    btn.onmouseover = function () { btn.style.borderColor = '#4a9eff'; btn.style.background = 'rgba(26,26,46,1)'; };
+    btn.onmouseout = function () { btn.style.borderColor = 'rgba(74,158,255,0.3)'; btn.style.background = 'rgba(26,26,46,0.9)'; };
+    document.body.appendChild(btn);
   }
 
   window.GameData = { init, logEvent, save, SESSION_ID };
