@@ -47,6 +47,18 @@
 
     </div>
 
+    <script src="../data-collector.js"></script>
     <script src="main.js"></script>
+    <script>
+      GameData.init('steady_hand');
+      (function() {
+        const _origEndStage = endStage;
+        endStage = function(success) {
+          _origEndStage(success);
+          const livesLeft = 3 - info.tries;
+          GameData.save({ outcome: success ? 'success' : 'failure', score: livesLeft, tries: info.tries, total_duration_s: info.totalDuration });
+        };
+      })();
+    </script>
 </body>
 </html>

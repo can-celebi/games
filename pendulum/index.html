@@ -59,6 +59,17 @@
         </div>
 
     </div>
+    <script src="../data-collector.js"></script>
     <script src="main.js"></script>
+    <script>
+      GameData.init('pendulum', { trackKeys: true });
+      (function() {
+        const _origEndStage = endStage;
+        endStage = function(success) {
+          _origEndStage(success);
+          GameData.save({ outcome: success ? 'success' : 'failure', attempts: info.attempts, total_duration_s: info.totalDuration });
+        };
+      })();
+    </script>
 </body>
 </html>

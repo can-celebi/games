@@ -374,8 +374,10 @@
   </svg>
 </div>
 
+<script src="data-collector.js"></script>
 <script>
 window.onload = function() {
+  GameData.init('plant');
 
   const QUESTION = "Which mythical Pokémon is known as the Guardian of the Forest, whose presence makes plant life flourish?";
   const CHOICES = [
@@ -811,6 +813,8 @@ window.onload = function() {
     stopDripTimer();
     const snap = growTracker.snap();
     const pct = getOverallGrowth();
+
+    GameData.save({ choice: label, index: selected, text: CHOICES[selected].text, growthPct: pct });
 
     resMsg.textContent = `Choice ${label} selected. 🌻`;
     resMsg.style.display = 'block';

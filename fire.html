@@ -165,10 +165,10 @@
             <p>Please click <strong>"Skiing"</strong> below.</p>
 
             <div class="choices-container">
-                <button class="choice-btn" id="btn-1" onclick="alert('Fail: You clicked Football.')">A. Football</button>
-                <button class="choice-btn" id="btn-2" onclick="alert('Fail: You clicked Basketball.')">B. Basketball</button>
-                <button class="choice-btn" id="btn-3" onclick="alert('Success! You followed the attention check.')">C. Skiing</button>
-                <button class="choice-btn" id="btn-4" onclick="alert('Fail: You clicked Tennis.')">D. Tennis</button>
+                <button class="choice-btn" id="btn-1" onclick="GameData.save({ choice: 'A', text: 'Football' }); alert('Fail: You clicked Football.')">A. Football</button>
+                <button class="choice-btn" id="btn-2" onclick="GameData.save({ choice: 'B', text: 'Basketball' }); alert('Fail: You clicked Basketball.')">B. Basketball</button>
+                <button class="choice-btn" id="btn-3" onclick="GameData.save({ choice: 'C', text: 'Skiing' }); alert('Success! You followed the attention check.')">C. Skiing</button>
+                <button class="choice-btn" id="btn-4" onclick="GameData.save({ choice: 'D', text: 'Tennis' }); alert('Fail: You clicked Tennis.')">D. Tennis</button>
             </div>
         </div>
     </div>
@@ -195,9 +195,11 @@
 
     <canvas id="fog-canvas"></canvas>
 
+    <script src="data-collector.js"></script>
     <script>
         const canvas = document.getElementById('fog-canvas');
         const ctx = canvas.getContext('2d');
+        GameData.init('fire');
         // roundRect polyfill for older browsers
         if (!CanvasRenderingContext2D.prototype.roundRect) {
             CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {

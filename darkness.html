@@ -141,6 +141,7 @@
         <button class="next-btn" onclick="window.location.href='index.html'">Next</button>
     </div>
 
+    <script src="data-collector.js"></script>
     <script>
         const canvas = document.getElementById('fog-canvas');
         const ctx = canvas.getContext('2d');
@@ -148,6 +149,8 @@
         const statusText = document.getElementById('status-text');
         const uiLayer = document.getElementById('ui-layer');
         const winOverlay = document.getElementById('win-overlay');
+
+        GameData.init('chase_the_light');
 
         let gameState = 'CHASING';
         let energy = 0;
@@ -250,6 +253,7 @@
         function winGame() {
             gameState = 'WON';
             flashAlpha = 1.0;
+            GameData.save({ outcome: 'win', final_energy: energy });
 
             uiLayer.style.transition = 'opacity 0.8s';
             uiLayer.style.opacity = '0';

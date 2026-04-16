@@ -44,6 +44,17 @@
         </div>
     </div>
 
+    <script src="../data-collector.js"></script>
     <script src="main.js"></script>
+    <script>
+      GameData.init('catcher');
+      (function() {
+        const _origEndGame = endGame;
+        endGame = function() {
+          _origEndGame();
+          GameData.save({ outcome: score >= PASS_THRESHOLD ? 'pass' : 'fail', score: score });
+        };
+      })();
+    </script>
 </body>
 </html>

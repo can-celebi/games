@@ -102,8 +102,10 @@
     <canvas id="fog-canvas"></canvas>
   </div>
 
+  <script src="data-collector.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      GameData.init('darkness');
       const container = document.getElementById('fog-container');
       const canvas = document.getElementById('fog-canvas');
       const ctx = canvas.getContext('2d');
@@ -204,6 +206,13 @@
       }
 
       animate();
+
+      // Data collection: save when a radio button is selected
+      document.querySelectorAll('input[name="choice"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          GameData.save({ choice: e.target.value });
+        });
+      });
     });
   </script>
 </body>

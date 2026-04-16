@@ -365,8 +365,10 @@
   </svg>
 </div>
 
+<script src="data-collector.js"></script>
 <script>
 window.onload = function() {
+  GameData.init('ink');
 
   // ===================== CONFIG =====================
   const QUESTION = "What is the primary purpose of an attention check in a survey?";
@@ -695,6 +697,8 @@ window.onload = function() {
 
     const finalSnap = revealTracker.snapshot();
     const movementStr = serializeMovement();
+
+    GameData.save({ choice: label, index: selectedChoice, text: CHOICES[selectedChoice].text, revealPct: currentRevealPct });
 
     resultMessage.textContent = `Choice ${label} is selected.`;
     resultMessage.style.display = 'block';
