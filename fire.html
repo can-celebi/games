@@ -207,6 +207,20 @@
     <script>
         const canvas = document.getElementById('fog-canvas');
         const ctx = canvas.getContext('2d');
+        // roundRect polyfill for older browsers
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (typeof r === 'number') r = [r, r, r, r];
+                const [tl, tr, br, bl] = r;
+                this.moveTo(x + tl, y);
+                this.lineTo(x + w - tr, y); this.quadraticCurveTo(x + w, y, x + w, y + tr);
+                this.lineTo(x + w, y + h - br); this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+                this.lineTo(x + bl, y + h); this.quadraticCurveTo(x, y + h, x, y + h - bl);
+                this.lineTo(x, y + tl); this.quadraticCurveTo(x, y, x + tl, y);
+                this.closePath();
+            };
+        }
+
         const energyFill = document.getElementById('energy-fill');
         const statusText = document.getElementById('status-text');
         const icons = [];
@@ -398,6 +412,17 @@
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
+        });
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const t = e.touches[0];
+            mouseX = t.clientX;
+            mouseY = t.clientY;
+        }, { passive: false });
+        window.addEventListener('touchstart', (e) => {
+            const t = e.touches[0];
+            mouseX = t.clientX;
+            mouseY = t.clientY;
         });
         window.addEventListener('resize', resize);
         
