@@ -190,8 +190,8 @@
   @media (hover: none) { #ink-cursor { display: none !important; } }
 
   /* ============ QUESTION & CHOICES ============ */
-  .tz { position: relative; z-index: 2; margin-bottom: 28px; }
-  .tz p { font-size: 21px; line-height: 1.55; font-weight: 600; letter-spacing: 0.2px; }
+  .tz { position: relative; z-index: 2; margin-bottom: 28px; overflow-wrap: break-word; word-wrap: break-word; }
+  .tz p { font-size: 21px; line-height: 1.55; font-weight: 600; letter-spacing: 0.2px; overflow-wrap: break-word; }
 
   .vb { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; }
 
@@ -513,8 +513,9 @@ window.onload = function() {
       const span = document.createElement('span');
       span.className = 'ink-char';
       if (text[i] === ' ') {
-        span.innerHTML = '&nbsp;';
+        span.textContent = ' ';
         span.classList.add('space-char');
+        span.style.display = 'inline';
       } else {
         span.textContent = text[i];
       }
