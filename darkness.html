@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fog of War Game</title>
+    <title>Darkness</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -16,7 +16,7 @@
             align-items: center;
             height: 100vh;
             color: #333;
-            cursor: none; /* Hide default cursor */
+            cursor: none;
         }
 
         #game-container {
@@ -28,50 +28,10 @@
             align-items: center;
         }
 
-        #content-layer {
-            background: #fdfbf7;
-            padding: 60px;
-            border-radius: 4px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            max-width: 650px;
-            text-align: left;
-            z-index: 1;
-            border: 1px solid #ccc;
-        }
-
-        h1 { margin-top: 0; margin-bottom: 25px; color: #2c3e50; font-size: 2.2em; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        p { line-height: 1.8; font-size: 1.1em; margin-bottom: 30px; color: #444; }
-        
-        .instruction-hint { text-align: center; font-style: italic; color: #888; font-size: 0.9em; margin-bottom: 20px; }
-
-        .choices-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-top: 30px;
-            align-items: center;
-        }
-
-        button.choice-btn {
-            padding: 12px 20px;
-            width: 100%;
-            max-width: 400px;
-            font-size: 16px;
-            cursor: pointer;
-            background: #ffffff;
-            color: #333;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            text-align: left;
-        }
-
-        button.choice-btn:hover { background: #f0f8ff; border-color: #3498db; }
-
-        /* UI Overlay for Energy - Moved to Bottom */
+        /* UI Overlay for Energy */
         #ui-layer {
             position: absolute;
-            bottom: 40px; /* Moved to bottom */
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 200;
@@ -83,7 +43,7 @@
 
         #energy-bar-container {
             width: 100%;
-            height: 30px; /* Thicker bar */
+            height: 30px;
             background: rgba(20, 20, 20, 0.9);
             border: 3px solid #777;
             border-radius: 15px;
@@ -96,14 +56,14 @@
         #energy-fill {
             width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #ff4500, #ff8c00, #ffd700); /* Fiery gradient */
+            background: linear-gradient(90deg, #ff4500, #ff8c00, #ffd700);
             box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
             transition: width 0.1s linear;
         }
 
         #status-text {
             color: #ffd700;
-            font-size: 24px; /* Larger text */
+            font-size: 24px;
             font-weight: bold;
             text-transform: uppercase;
             text-shadow: 0 2px 8px rgba(0,0,0,1);
@@ -118,37 +78,52 @@
             width: 100%;
             height: 100%;
             z-index: 100;
-            pointer-events: none; 
+            pointer-events: none;
+        }
+
+        /* Win overlay */
+        #win-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: white;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            cursor: default;
+        }
+
+        #win-overlay.show {
+            display: flex;
+        }
+
+        #win-overlay h1 {
+            font-size: 3rem;
+            color: #2c3e50;
+            font-weight: 700;
+        }
+
+        #win-overlay .next-btn {
+            padding: 14px 48px;
+            font-size: 1.2rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #win-overlay .next-btn:hover {
+            background: #2980b9;
         }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- The Content Layer (Hidden initially by fog) -->
-        <div id="content-layer">
-            <h1>Survey Section 3: Preferences</h1>
-            <p class="instruction-hint">(Hover over text to reveal)</p>
-            <p>
-                In order to facilitate our research on decision making, we are interested in knowing 
-                certain factors about you. Specifically, we are interested in whether you actually 
-                take the time to read the instructions.
-            </p>
-            <p>
-                To demonstrate that you have read the instructions, please ignore the question below 
-                about your sports preferences. Instead, simply click on the option labeled "Skiing" 
-                to proceed.
-            </p>
-            <p><strong>Question: Which of these activities do you enjoy most?</strong></p>
-
-            <div class="choices-container">
-                <button class="choice-btn" onclick="alert('Fail: You clicked Football.')">A. Football</button>
-                <button class="choice-btn" onclick="alert('Fail: You clicked Basketball.')">B. Basketball</button>
-                <button class="choice-btn" onclick="alert('Success! You followed the attention check.')">C. Skiing</button>
-                <button class="choice-btn" onclick="alert('Fail: You clicked Tennis.')">D. Tennis</button>
-            </div>
-        </div>
-    </div>
+    <div id="game-container"></div>
 
     <div id="ui-layer">
         <div id="status-text">Chase the Light to Charge Lantern</div>
@@ -159,97 +134,62 @@
 
     <canvas id="fog-canvas"></canvas>
 
+    <div id="win-overlay">
+        <h1>Lantern Charged!</h1>
+        <button class="next-btn" onclick="window.location.href='index.html'">Next</button>
+    </div>
+
     <script>
         const canvas = document.getElementById('fog-canvas');
         const ctx = canvas.getContext('2d');
         const energyFill = document.getElementById('energy-fill');
         const statusText = document.getElementById('status-text');
         const uiLayer = document.getElementById('ui-layer');
-        
-        // --- GAME PARAMETERS ---
-        let gameState = 'CHASING'; // 'CHASING' or 'REVEALING'
+        const winOverlay = document.getElementById('win-overlay');
+
+        let gameState = 'CHASING';
         let energy = 0;
         const ENERGY_MAX = 100;
-        const CHARGE_RATE = 0.5; 
-        
-        // Transition Flash Variable
+        const CHARGE_RATE = 0.5;
+
         let flashAlpha = 0;
 
-        // Firefly AI
         const FLY_SPEED = 4;
-        const FLEE_RADIUS = 200; 
+        const FLEE_RADIUS = 200;
         const WANDER_STRENGTH = 0.5;
 
-        // --- FOG PARAMETERS ---
-        const FOG_DENSITY = 0.3; 
-        const TRAIL_DELAY = 4000; 
-        const BRUSH_RADIUS = 50; 
-        const CORE_SIZE = 0.01; 
-
-        // --- PRE-RENDERING ---
-        
-        // 1. Lantern Brush (For Phase 2 Clearing)
-        const brushCanvas = document.createElement('canvas');
-        brushCanvas.width = BRUSH_RADIUS * 2;
-        brushCanvas.height = BRUSH_RADIUS * 2;
-        const bCtx = brushCanvas.getContext('2d');
-        const gradient = bCtx.createRadialGradient(BRUSH_RADIUS, BRUSH_RADIUS, BRUSH_RADIUS * CORE_SIZE, BRUSH_RADIUS, BRUSH_RADIUS, BRUSH_RADIUS);
-        gradient.addColorStop(0, 'rgba(0,0,0,1)');   
-        gradient.addColorStop(0.4, 'rgba(0,0,0,0.8)'); 
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');   
-        bCtx.fillStyle = gradient;
-        bCtx.beginPath(); bCtx.arc(BRUSH_RADIUS, BRUSH_RADIUS, BRUSH_RADIUS, 0, Math.PI * 2); bCtx.fill();
-        bCtx.fillStyle = 'rgba(0,0,0,1)';
-        bCtx.beginPath(); bCtx.arc(BRUSH_RADIUS, BRUSH_RADIUS, BRUSH_RADIUS * CORE_SIZE, 0, Math.PI * 2); bCtx.fill();
-
-        // 2. Lantern Glow (Visual for Phase 1 ONLY)
+        // Lantern Glow
         const lanternCanvas = document.createElement('canvas');
         lanternCanvas.width = 100;
         lanternCanvas.height = 100;
         const lCtx = lanternCanvas.getContext('2d');
         const lGrad = lCtx.createRadialGradient(50, 50, 5, 50, 50, 50);
-        lGrad.addColorStop(0, 'rgba(255, 200, 50, 1)');     
-        lGrad.addColorStop(0.4, 'rgba(255, 140, 0, 0.4)'); 
-        lGrad.addColorStop(1, 'rgba(255, 140, 0, 0)');     
+        lGrad.addColorStop(0, 'rgba(255, 200, 50, 1)');
+        lGrad.addColorStop(0.4, 'rgba(255, 140, 0, 0.4)');
+        lGrad.addColorStop(1, 'rgba(255, 140, 0, 0)');
         lCtx.fillStyle = lGrad;
         lCtx.fillRect(0, 0, 100, 100);
 
-        // --- STATE SETUP ---
         let width, height;
         let mouseX = -1000, mouseY = -1000;
-        let trail = []; 
-        let fly = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
+        let fly = { x: 0, y: 0, vx: 0, vy: 0 };
 
         function resize() {
             width = window.innerWidth;
             height = window.innerHeight;
             canvas.width = width;
             canvas.height = height;
-            if(fly.x === 0) { fly.x = width/2; fly.y = height/2; }
+            if (fly.x === 0) { fly.x = width / 2; fly.y = height / 2; }
         }
 
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
-            
-            if (gameState === 'REVEALING') {
-                const now = Date.now();
-                const dist = (trail.length > 0) ? Math.hypot(mouseX - trail[trail.length-1].x, mouseY - trail[trail.length-1].y) : 10;
-                
-                if (dist > 5 || trail.length === 0) {
-                    trail.push({ x: mouseX, y: mouseY, time: now });
-                } else {
-                    trail[trail.length - 1].time = now;
-                    trail[trail.length - 1].x = mouseX;
-                    trail[trail.length - 1].y = mouseY;
-                }
-            }
         });
 
         window.addEventListener('resize', resize);
         resize();
 
-        // --- LOGIC ---
         function updateFirefly() {
             const dx = mouseX - fly.x;
             const dy = mouseY - fly.y;
@@ -263,10 +203,8 @@
             fly.vx += (Math.random() - 0.5) * WANDER_STRENGTH;
             fly.vy += (Math.random() - 0.5) * WANDER_STRENGTH;
 
-            const cx = width / 2;
-            const cy = height / 2;
-            fly.vx += (cx - fly.x) * 0.0005;
-            fly.vy += (cy - fly.y) * 0.0005;
+            fly.vx += (width / 2 - fly.x) * 0.0005;
+            fly.vy += (height / 2 - fly.y) * 0.0005;
 
             const speed = Math.hypot(fly.vx, fly.vy);
             if (speed > FLY_SPEED) {
@@ -286,27 +224,24 @@
                 energy += CHARGE_RATE;
                 if (energy >= ENERGY_MAX) {
                     energy = ENERGY_MAX;
-                    startPhaseTwo();
+                    winGame();
                 }
             }
             energyFill.style.width = energy + "%";
         }
 
-        function startPhaseTwo() {
-            gameState = 'REVEALING';
-            
-            // Trigger Flash
+        function winGame() {
+            gameState = 'WON';
             flashAlpha = 1.0;
 
-            // Update UI text (Empty string removes the old text)
-            // But actually, we want to remove the UI bar entirely or keep it?
-            // User request: "hover to reveal" text appears on canvas.
-            // Let's fade out the energy bar.
-            uiLayer.style.transition = 'opacity 1s';
+            uiLayer.style.transition = 'opacity 0.8s';
             uiLayer.style.opacity = '0';
+
+            setTimeout(() => {
+                winOverlay.classList.add('show');
+            }, 1200);
         }
 
-        // --- RENDER LOOP ---
         function animate() {
             const now = Date.now();
 
@@ -318,77 +253,39 @@
                 ctx.fillRect(0, 0, width, height);
 
                 // Firefly
-                const pulse = Math.sin(now * 0.01) * 5 + 15; 
+                const pulse = Math.sin(now * 0.01) * 5 + 15;
                 const flyGrad = ctx.createRadialGradient(fly.x, fly.y, 2, fly.x, fly.y, pulse);
                 flyGrad.addColorStop(0, 'white');
                 flyGrad.addColorStop(0.4, 'cyan');
                 flyGrad.addColorStop(1, 'transparent');
-                
+
                 ctx.fillStyle = flyGrad;
                 ctx.beginPath();
                 ctx.arc(fly.x, fly.y, pulse, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Player Lantern (Visible in Phase 1)
+                // Player Lantern
                 ctx.globalCompositeOperation = 'screen';
                 ctx.drawImage(lanternCanvas, mouseX - 50, mouseY - 50);
-
-            } else {
-                // --- PHASE 2: REVEAL ---
-
-                // 1. Organic Fog
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = `rgba(0, 0, 0, ${FOG_DENSITY})`;
-                ctx.fillRect(0, 0, width, height);
-
-                // 2. CLEARING THE TRAIL & TEXT
-                // We switch to destination-out immediately.
-                // Anything drawn here becomes a "hole" in the fog.
-                ctx.globalCompositeOperation = 'destination-out';
-
-                // A. Draw "HOVER TO REVEAL" as a hole
-                // This makes the text transparent, showing the white paper background underneath
-                ctx.save();
-                ctx.font = 'bold 48px "Helvetica Neue", Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                // Color doesn't matter in destination-out mode, alpha does.
-                // We use opacity to control how "clear" the window is.
-                ctx.fillStyle = 'rgba(0, 0, 0, 1)'; 
-                ctx.fillText("HOVER TO REVEAL", width / 2, height / 2);
-                ctx.restore();
-
-                // B. Draw Brush Trails as holes
-                for (let i = trail.length - 1; i >= 0; i--) {
-                    const point = trail[i];
-                    const age = now - point.time;
-                    if (age < TRAIL_DELAY) {
-                        ctx.drawImage(brushCanvas, point.x - BRUSH_RADIUS, point.y - BRUSH_RADIUS);
-                    } else {
-                        trail.splice(i, 1);
-                    }
-                }
-                
-                // NO LANTERN DRAWN HERE (As requested)
             }
 
-            // --- TRANSITION FLASH EFFECT ---
+            // Flash to white on win
             if (flashAlpha > 0) {
-                // Draw a white rectangle over everything
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
                 ctx.fillRect(0, 0, width, height);
-                
-                // Fade out
-                flashAlpha -= 0.02;
+                flashAlpha -= 0.015;
                 if (flashAlpha < 0) flashAlpha = 0;
             }
 
-            requestAnimationFrame(animate);
+            if (gameState !== 'WON') {
+                requestAnimationFrame(animate);
+            } else if (flashAlpha > 0) {
+                requestAnimationFrame(animate);
+            }
         }
 
         animate();
-
     </script>
 </body>
 </html>
