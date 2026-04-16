@@ -151,15 +151,14 @@
   }
 
   // Beacon-based save for unload (non-blocking, fire-and-forget)
+  // Stores per-game key so records never cross-contaminate
   function saveBeacon(result) {
     var record = buildRecord(result);
-    var line = JSON.stringify(record) + '\n';
-    // Use sendBeacon to a simple endpoint — but GitHub API doesn't support it directly
-    // Fallback: store in localStorage for next visit
     try {
-      var stored = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+      var key = 'game_data_' + gameName;
+      var stored = JSON.parse(localStorage.getItem(key) || '[]');
       stored.push(record);
-      localStorage.setItem('game_data_fallback', JSON.stringify(stored));
+      localStorage.setItem(key, JSON.stringify(stored));
     } catch (e) {}
   }
 
@@ -172,17 +171,21 @@
     var filePath = 'data/' + gameName + '.jsonl';
 
     try {
-      // Flush localStorage fallback — only records for THIS game
+      // Flush localStorage fallback for THIS game only
       var fallback = [];
       try {
-        var allFallback = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
-        var remaining = [];
-        allFallback.forEach(function (r) {
-          if (r.game === gameName) fallback.push(r);
-          else remaining.push(r);
-        });
-        if (remaining.length > 0) localStorage.setItem('game_data_fallback', JSON.stringify(remaining));
-        else localStorage.removeItem('game_data_fallback');
+        var key = 'game_data_' + gameName;
+        fallback = JSON.parse(localStorage.getItem(key) || '[]');
+        if (fallback.length > 0) localStorage.removeItem(key);
+        // Also clean up any old shared-bucket data for this game
+        var oldBucket = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+        if (oldBucket.length > 0) {
+          var mine = oldBucket.filter(function (r) { return r.game === gameName; });
+          var rest = oldBucket.filter(function (r) { return r.game !== gameName; });
+          fallback = fallback.concat(mine);
+          if (rest.length > 0) localStorage.setItem('game_data_fallback', JSON.stringify(rest));
+          else localStorage.removeItem('game_data_fallback');
+        }
       } catch (e) {}
 
       var extraLines = fallback.map(function (r) { return JSON.stringify(r) + '\n'; }).join('');
@@ -237,9 +240,10 @@
     } catch (e) {
       console.warn('[data-collector] Error:', e.message);
       try {
-        var stored = JSON.parse(localStorage.getItem('game_data_fallback') || '[]');
+        var key = 'game_data_' + gameName;
+        var stored = JSON.parse(localStorage.getItem(key) || '[]');
         stored.push(record);
-        localStorage.setItem('game_data_fallback', JSON.stringify(stored));
+        localStorage.setItem(key, JSON.stringify(stored));
       } catch (e2) {}
     }
     saving = false;
