@@ -632,6 +632,8 @@ window.onload = function() {
   // ===================== MOBILE TOUCH =====================
   function onTouchStart(e) {
     if (!inkToolActive) return;
+    // Don't block taps on the quill button (so user can put it down)
+    if (e.target.closest('#quill-btn-wrap')) return;
     e.preventDefault();
     const touch = e.touches[0];
     lastMouseX = touch.clientX;
@@ -642,6 +644,7 @@ window.onload = function() {
 
   function onTouchMove(e) {
     if (!inkToolActive) return;
+    if (e.target.closest('#quill-btn-wrap')) return;
     e.preventDefault();
     const touch = e.touches[0];
     const mx = touch.clientX, my = touch.clientY;
