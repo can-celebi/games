@@ -75,7 +75,8 @@
       window.addEventListener('keyup', onKeyUp);
     }
 
-    // Auto-save at 30s and 60s
+    // Auto-save at 20s, 30s, and 60s
+    setTimeout(function () { save({ trigger: 'auto_20s' }); }, 20000);
     setTimeout(function () { save({ trigger: 'auto_30s' }); }, 30000);
     setTimeout(function () { save({ trigger: 'auto_60s' }); }, 60000);
 
